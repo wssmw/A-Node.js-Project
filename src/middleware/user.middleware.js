@@ -1,6 +1,6 @@
 const errType = require('../app/err.message')
 
-const servicee = require('../service/user.service')
+const service = require('../service/user.service')
 
 const md5password = require('../utils/passwordhandle')
 
@@ -16,7 +16,7 @@ const verifyUser = async (ctx, next) => {
     }
     // 3.判断该用户名是否已经被注册过
 
-    const result = await servicee.getUsernameByusername(username)
+    const result = await service.getUsernameByusername(username)
     console.log(username,result.length);
     if (result.length) {
         const err = new Error(errType.USER_ALREADY_EXISTS)
