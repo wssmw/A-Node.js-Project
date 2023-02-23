@@ -1,10 +1,26 @@
+const jwt = require('jsonwebtoken')
+
+const {PRIVATE_KEY} = require('../app/config')
+
 class LoginController {
     async login (ctx,next) {
-        console.log(1);
-        const { username } = ctx.request.body;
-        console.log(username);
-        ctx.body = `登陆成功，欢迎回来`
+        console.log(ctx.userinfo);
+        const { id, username } = ctx.userinfo
+        console.log(id,username);
+        const token = jwt.sign({id, username}, PRIVATE_KEY , {
+            expiresIn:60*60*24,
+            algorithm:'RS256'
+        })
+        console.log(token);
+        ctx.body = {
+            id,
+            username,
+            token
+        }
+    }
+    async seccess (ctx,next) {
+        ctx.body = "授权成功"
     }
 }
 
-module.exports = new LoginController()
+module.exports = new LoginController() 

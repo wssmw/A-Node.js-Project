@@ -2,13 +2,11 @@ const connection = require('../app/database')
 
 class UserService{
     async create(user) {
-        const {username,password} = user
+        const {username,password,auth} = user
         
-        console.log(username,password);
+        const statement = `INSERT INTO users (username,password,auth) VALUES (?,?,?)`
 
-        const statement = `INSERT INTO users (username,password) VALUES (?,?)`
-
-        const result = await connection.execute(statement, [username,password])
+        const result = await connection.execute(statement, [username,password,auth])
 
         return result
     }

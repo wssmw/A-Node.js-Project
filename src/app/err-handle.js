@@ -20,6 +20,14 @@ const errHandle = (err, ctx) => {
             status = 400,
                 message = "密码错误"
             break
+        case errType.UNAUTHORIZATION:
+            status = 400,
+                message = "无效的token"
+            break
+        case errType.MANAGER_NOT_AUTH:
+            status = 400,
+                message = "管理员的权限不够"
+            break
         default:
             status = 404,
                 message = "NOT FOUND"
