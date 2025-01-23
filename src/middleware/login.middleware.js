@@ -46,11 +46,11 @@ const testLogin = async (ctx, next) => {
 
 const verifyAuth = async (ctx, next) => {
   console.log("验证授权");
-
+  console.log(ctx.headers, 'ctx.headers')
   const authorization = ctx.headers.authorization || "";
-
+  console.log(authorization, 'authorization')
   const token = authorization.replace("Bearer ", "");
-
+  console.log(token, 'token')
   try {
     const result = jwt.verify(token, PUBLIC_KEY, {
       algorithms: ["RS256"],

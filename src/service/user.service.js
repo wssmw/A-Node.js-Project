@@ -2,19 +2,28 @@ const connection = require("../app/database");
 
 class UserService {
   async create(user) {
-    console.log(user, 'user')
-    const { username, password = "", nickname, avatar_url } = user;
-
-    const statement = `INSERT INTO users (username,password,nickname,avatar_url) VALUES (?,?,?,?)`;
-
-    const result = await connection.execute(statement, [
-      username,
+    // 解构用户数据，设置默认值
+    const { 
+      username, 
       password,
-      nickname,
-      avatar_url,
-    ]);
+      nickname = username, // 如果没有提供昵称，使用用户名
+      avatar_url = null   // 如果没有提供头像，使用null
+    } = user
 
-    return result;
+    const statement = `INSERT INTO users (username, password, nickname, avatar_url) VALUES (?, ?, ?, ?);`
+
+    try {
+      const [result] = await connection.execute(statement, [
+        username,
+        password,
+        nickname,
+        avatar_url
+      ])
+      return result
+    } catch (error) {
+      console.error('创建用户错误:', error)
+      throw error
+    }
   }
   async update(user) {
     console.log(user, 'user')
