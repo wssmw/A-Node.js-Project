@@ -1,11 +1,17 @@
 const articleService = require('../service/article.service')
+const fs = require('fs')
+const path = require('path')
+
+// 添加上传目录常量
+const { SERVER_HOST, SERVER_PORT } = process.env
 
 class ArticleController {
   async create(ctx) {
     try {
       const { title, content, summary, tags, category } = ctx.request.body
       const { id: userId } = ctx.userinfo
-
+      const file = ctx.file  // 获取上传的封面图片
+      console.log('file',ctx.request.body)
       // 验证必填字段
       if (!title || !content || !summary || !category) {
         ctx.status = 400
@@ -15,7 +21,7 @@ class ArticleController {
         }
         return
       }
-
+      console.log( typeof tags,'tags')
       // 验证标签
       if (!Array.isArray(tags)) {
         ctx.status = 400
@@ -26,10 +32,17 @@ class ArticleController {
         return
       }
 
+      // 处理封面图片
+      let cover_url = null
+      if (file) {
+        cover_url = getFileUrl('cover', file.filename)
+      }
+
       const result = await articleService.createArticle({
         title,
         content,
         summary,
+        cover_url,
         tags,
         category,
         userId
@@ -43,6 +56,14 @@ class ArticleController {
         }
       }
     } catch (error) {
+      // 如果出错且上传了文件，删除文件
+      if (ctx.file) {
+        const filePath = ctx.file.path
+        if (fs.existsSync(filePath)) {
+          fs.unlinkSync(filePath)
+        }
+      }
+
       ctx.status = 500
       ctx.body = {
         code: 500,
@@ -103,7 +124,12 @@ class ArticleController {
       ctx.body = {
         code: 200,
         data: {
-          articles: result.articles,
+          articles: result.articles.map(item=>{
+            if(item.cover_url) {
+              item.cover_url = `http://${SERVER_HOST}:${SERVER_PORT}${item.cover_url}`
+            }
+            return item
+          }),
           total: result.total,
         }
       }

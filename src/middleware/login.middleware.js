@@ -13,6 +13,7 @@ const CLIENT_SECRET =
 const REDIRECTURL = "http://localhost:1234/login/gitee/callback";
 const { PRIVATE_KEY, PUBLIC_KEY } = require("../app/config");
 const { default: axios } = require("axios");
+const { SERVER_HOST, SERVER_PORT } = process.env
 
 const verifyLogin = async (ctx, next) => {
   // 1.拿到用户名和密码
@@ -34,7 +35,9 @@ const verifyLogin = async (ctx, next) => {
     const err = new Error("123333");
     return ctx.app.emit("err", err, ctx);
   }
-
+  if(userinfo.avatar_url) {
+    userinfo.avatar_url = `http://${SERVER_HOST}:${SERVER_PORT}${userinfo.avatar_url}`
+  }
   ctx.userinfo = userinfo;
   await next();
 };
@@ -45,12 +48,8 @@ const testLogin = async (ctx, next) => {
 }
 
 const verifyAuth = async (ctx, next) => {
-  console.log("验证授权");
-  console.log(ctx.headers, 'ctx.headers')
   const authorization = ctx.headers.authorization || "";
-  console.log(authorization, 'authorization')
   const token = authorization.replace("Bearer ", "");
-  console.log(token, 'token')
   try {
     const result = jwt.verify(token, PUBLIC_KEY, {
       algorithms: ["RS256"],

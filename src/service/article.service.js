@@ -2,7 +2,7 @@ const connection = require('../app/database')
 
 class ArticleService {
   async createArticle(articleData) {
-    const { title, content, summary, tags = [], category, userId } = articleData
+    const { title, content, summary, tags = [], category, userId, cover_url = null } = articleData
     
     // 获取连接
     const connection = await require('../app/database').getConnection()
@@ -14,12 +14,13 @@ class ArticleService {
       // 1. 创建文章
       const [articleResult] = await connection.execute(`
         INSERT INTO articles 
-        (title, content, summary, category_id, user_id) 
-        VALUES (?, ?, ?, ?, ?)
+        (title, content, summary, cover_url, category_id, user_id) 
+        VALUES (?, ?, ?, ?, ?, ?)
       `, [
         title, 
         content,
         summary, 
+        cover_url,
         category, 
         userId
       ])
