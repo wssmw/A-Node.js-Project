@@ -57,7 +57,11 @@ class ArticleService {
     try {
       // 1. 查询文章基本信息
       const [articles] = await connection.execute(`
-        SELECT a.*, u.username as author_name, c.name as category_name
+        SELECT 
+          a.*,
+          u.username as author_name,
+          u.nickname as author_nickname,
+          c.name as category_name
         FROM articles a
         LEFT JOIN users u ON a.user_id = u.id
         LEFT JOIN categories c ON a.category_id = c.id
@@ -81,6 +85,79 @@ class ArticleService {
       }
     } catch (error) {
       console.error('查询文章错误:', error)
+      throw error
+    }
+  }
+
+  async findArticles(offset = 0, limit = 10, options = {}) {
+    try {
+      // 1. 构建基础查询
+      let sql = `
+        SELECT 
+          a.*,
+          u.username as author_name,
+          u.nickname as author_nickname,
+          c.name as category_name
+        FROM articles a
+        LEFT JOIN users u ON a.user_id = u.id
+        LEFT JOIN categories c ON a.category_id = c.id
+      `
+      const params = []
+
+      // 2. 添加条件查询
+      const conditions = []
+      if (options.category) {
+        conditions.push('a.category_id = ?')
+        params.push(options.category)
+      }
+      if (options.userId) {
+        conditions.push('a.user_id = ?')
+        params.push(options.userId)
+      }
+      if (options.keyword) {
+        conditions.push('(a.title LIKE ? OR a.content LIKE ?)')
+        params.push(`%${options.keyword}%`, `%${options.keyword}%`)
+      }
+
+      if (conditions.length > 0) {
+        sql += ` WHERE ${conditions.join(' AND ')}`
+      }
+
+      // 3. 添加排序和分页
+      sql+=` ORDER BY a.created_at DESC LIMIT ${limit} OFFSET ${offset}`
+      console.log(params,'params')
+      console.log(sql,'sql')
+
+      // 4. 执行查询
+      const [articles] = await connection.execute(sql, params)
+
+      // 5. 查询每篇文章的标签
+      for (const article of articles) {
+        const [tags] = await connection.execute(`
+          SELECT t.id, t.name
+          FROM tags t
+          JOIN article_tags at ON t.id = at.tag_id
+          WHERE at.article_id = ?
+        `, [article.id])
+        article.tags = tags
+      }
+
+      // 6. 查询总数（不包含 LIMIT 和 OFFSET 参数）
+      let countSql = `
+        SELECT COUNT(*) as total 
+        FROM articles a
+      `
+      if (conditions.length > 0) {
+        countSql += ` WHERE ${conditions.join(' AND ')}`
+      }
+      const [countResult] = await connection.execute(countSql, params)
+
+      return {
+        articles,
+        total: countResult[0].total
+      }
+    } catch (error) {
+      console.error('查询文章列表错误:', error)
       throw error
     }
   }

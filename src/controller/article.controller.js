@@ -51,6 +51,72 @@ class ArticleController {
       }
     }
   }
+
+  async findById(ctx) {
+    try {
+      const { id } = ctx.params
+      const article = await articleService.findArticleById(id)
+
+      if (!article) {
+        ctx.status = 404
+        ctx.body = {
+          code: 404,
+          message: '文章不存在'
+        }
+        return
+      }
+
+      ctx.body = {
+        code: 200,
+        data: article
+      }
+    } catch (error) {
+      ctx.status = 500
+      ctx.body = {
+        code: 500,
+        message: '服务器内部错误',
+        error: error.message
+      }
+    }
+  }
+
+  async find(ctx) {
+    try {
+      const { 
+        page = 1, 
+        pageSize = 10, 
+        category,
+        userId,
+        keyword 
+      } = ctx.request.body
+      console.log(ctx.request.body,'page')
+      // 确保参数类型正确
+      const offset = Math.max(0, (parseInt(page) - 1)) * parseInt(pageSize)
+      const limit = parseInt(pageSize)
+      
+      const result = await articleService.findArticles(offset, limit, {
+        category: category ? parseInt(category) : undefined,
+        userId: userId ? parseInt(userId) : undefined,
+        keyword
+      })
+
+      ctx.body = {
+        code: 200,
+        data: {
+          articles: result.articles,
+          total: result.total,
+        }
+      }
+    } catch (error) {
+      console.error('获取文章列表错误:', error)
+      ctx.status = 500
+      ctx.body = {
+        code: 500,
+        message: '服务器内部错误',
+        error: error.message
+      }
+    }
+  }
 }
 
 module.exports = new ArticleController() 
