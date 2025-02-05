@@ -89,12 +89,7 @@ class UserService {
         'SELECT id, username, nickname, avatar_url FROM users WHERE id = ?',
         [id]
       )
-      
-      // 处理头像URL
-      if (users[0] && users[0].avatar_url) {
-        users[0].avatar_url = `http://${SERVER_HOST}:${SERVER_PORT}${users[0].avatar_url}`
-      }
-      
+
       return users[0]
     } catch (error) {
       console.error('获取用户信息错误:', error)
