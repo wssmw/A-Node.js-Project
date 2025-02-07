@@ -15,6 +15,6 @@ const articles = `
     FOREIGN KEY (user_id) REFERENCES users(id),
     FOREIGN KEY (category_id) REFERENCES categories(id)
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-`
+`;
 
-module.exports = articles  
+module.exports = articles;

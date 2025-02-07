@@ -1,14 +1,13 @@
-const fs=require('fs')
+const fs = require('fs');
 
-const useRouters = (app) => {
+const useRouters = app => {
     fs.readdirSync(__dirname).forEach(file => {
-        if(file === 'index.js') return
+        if (file === 'index.js') return;
 
-        const router = require(`./${file}`)
-        app.use(router.routes())
-        app.use(router.allowedMethods())
-    })
-}
+        const router = require(`./${file}`);
+        app.use(router.routes());
+        app.use(router.allowedMethods());
+    });
+};
 
-
-module.exports = useRouters
+module.exports = useRouters;

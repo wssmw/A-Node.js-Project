@@ -1,7 +1,7 @@
-const jwt = require("jsonwebtoken");
+const jwt = require('jsonwebtoken');
 
-const { PRIVATE_KEY } = require("../app/config");
-const service = require("../service/user.service");
+const { PRIVATE_KEY } = require('../app/config');
+const service = require('../service/user.service');
 
 class LoginController {
     async login(ctx, next) {
@@ -10,7 +10,7 @@ class LoginController {
         console.log(id, username);
         const token = jwt.sign({ id, username }, PRIVATE_KEY, {
             expiresIn: 60 * 60 * 24,
-            algorithm: "RS256",
+            algorithm: 'RS256',
         });
         console.log(token);
         ctx.body = {
@@ -28,24 +28,24 @@ class LoginController {
         if (!userinfo) {
             const res = await service.create(userInfo);
         } else {
-            const res = await service.update(userInfo)
+            const res = await service.update(userInfo);
         }
         result = await service.getUsernameByusername(username);
-        let { id } = result
+        let { id } = result;
         const token = jwt.sign({ id, username }, PRIVATE_KEY, {
             expiresIn: 60 * 60 * 24,
-            algorithm: "RS256",
+            algorithm: 'RS256',
         });
-        ctx.redirect('http://localhost:8000')
+        ctx.redirect('http://localhost:8000');
         ctx.body = {
             token,
             userInfo: {
-                ...result[0]
-            }
+                ...result[0],
+            },
         };
     }
     async seccess(ctx, next) {
-        ctx.body = "授权成功";
+        ctx.body = '授权成功';
     }
 }
 
