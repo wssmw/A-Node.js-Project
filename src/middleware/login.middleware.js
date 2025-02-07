@@ -10,7 +10,7 @@ const CLIENT_ID =
     '345c224984e879d914da13cd4dd4b92cdbf217722342f2bfc46db724ca7ad681';
 const CLIENT_SECRET =
     '9ae0cc711853df7e0b6441e2926c0bd3513dd6df57be5e79174a9ffb9da8868b';
-const REDIRECTURL = 'http://localhost:1234/login/gitee/callback';
+const REDIRECTURL = 'http://localhost:8000';
 const { PRIVATE_KEY, PUBLIC_KEY } = require('../app/config');
 const { default: axios } = require('axios');
 const { SERVER_HOST, SERVER_PORT } = process.env;
@@ -42,8 +42,8 @@ const verifyLogin = async (ctx, next) => {
     await next();
 };
 
-const testLogin = async (ctx, next) => {
-    let authUrl = `${GITEE_AUTH_URL}?client_id=${CLIENT_ID}&redirect_uri=${CLIENT_SECRET}&response_type=code`;
+const redirectLogin = async (ctx, next) => {
+    let authUrl = `${GITEE_AUTH_URL}?client_id=${CLIENT_ID}&redirect_uri=${REDIRECTURL}&response_type=code`;
     ctx.redirect(authUrl);
 };
 
@@ -68,11 +68,7 @@ const verifyAuth = async (ctx, next) => {
 const getAccessToken = async (ctx, next) => {
     console.log('这里执行');
     // 1.拿到code
-    console.log(ctx.request.url, 'ctx');
-    let url = ctx.request.url;
-    url = url.split('=');
-    console.log(url);
-    let code = url[1];
+    let { code } = ctx.query;
     console.log(code, 'code');
     // 2.获取accesstoken
     try {
@@ -86,9 +82,7 @@ const getAccessToken = async (ctx, next) => {
                 grant_type: 'authorization_code',
             }
         );
-        console.log(tokenResponse, 'tokenResponse');
         const { access_token } = tokenResponse.data;
-        console.log(access_token, 'access_token');
         let userInfo = await getUserInfo(access_token);
         let { login, name, avatar_url } = userInfo;
         userInfo = {
@@ -163,5 +157,5 @@ module.exports = {
     verifyLogin,
     verifyAuth,
     getAccessToken,
-    testLogin,
+    redirectLogin,
 };

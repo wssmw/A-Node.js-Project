@@ -13,6 +13,6 @@ module.exports = {
     },
     rules: {
         // 自定义规则
-        'no-console': 'warn', // 示例：禁止使用 console
+        'no-console': 'error', // 示例：禁止使用 console
     },
 };

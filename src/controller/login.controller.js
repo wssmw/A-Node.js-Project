@@ -20,11 +20,12 @@ class LoginController {
     }
     async loginWithGitee(ctx, next) {
         let userInfo = ctx.userInfo;
+        console.log(userInfo, 'userInfo');
         let { username } = userInfo;
         // 1.判断用户名是否存在
         let result = await service.getUsernameByusername(username);
         const userinfo = result[0];
-
+        console.log(userinfo, 'userinfo');
         if (!userinfo) {
             const res = await service.create(userInfo);
         } else {
@@ -36,7 +37,6 @@ class LoginController {
             expiresIn: 60 * 60 * 24,
             algorithm: 'RS256',
         });
-        ctx.redirect('http://localhost:8000');
         ctx.body = {
             token,
             userInfo: {

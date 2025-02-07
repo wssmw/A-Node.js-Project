@@ -1,16 +1,16 @@
 const connection = require('../app/database');
 const { SERVER_HOST, SERVER_PORT } = process.env;
+const md5password = require('../utils/passwordhandle');
 
 class UserService {
     async create(user) {
         // 解构用户数据，设置默认值
         const {
             username,
-            password,
+            password = md5password(md5password('123456')),
             nickname = username, // 如果没有提供昵称，使用用户名
             avatar_url = null, // 如果没有提供头像，使用null
         } = user;
-
         const statement = `INSERT INTO users (username, password, nickname, avatar_url) VALUES (?, ?, ?, ?);`;
 
         try {
