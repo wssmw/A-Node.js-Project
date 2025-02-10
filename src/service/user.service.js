@@ -9,7 +9,7 @@ class UserService {
             username,
             password = md5password(md5password('123456')),
             nickname = username, // 如果没有提供昵称，使用用户名
-            avatar_url = null, // 如果没有提供头像，使用null
+            avatar_url = `http://${SERVER_HOST}:${SERVER_PORT}/uploads/avatar/defaultAvatar.png`, // 如果没有提供头像，使用默认头像
         } = user;
         const statement = `INSERT INTO users (username, password, nickname, avatar_url) VALUES (?, ?, ?, ?);`;
 

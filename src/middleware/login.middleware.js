@@ -35,9 +35,9 @@ const verifyLogin = async (ctx, next) => {
         const err = new Error('123333');
         return ctx.app.emit('err', err, ctx);
     }
-    if (userinfo.avatar_url) {
-        userinfo.avatar_url = `http://${SERVER_HOST}:${SERVER_PORT}${userinfo.avatar_url}`;
-    }
+    // if (userinfo.avatar_url) {
+    //     userinfo.avatar_url = `http://${SERVER_HOST}:${SERVER_PORT}${userinfo.avatar_url}`;
+    // }
     ctx.userinfo = userinfo;
     await next();
 };

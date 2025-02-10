@@ -15,9 +15,16 @@ class UserController {
 
         // 查询数据
         const res = await service.create(user);
-
+        console.log(res, 'restes');
         // 返回数据
-        ctx.body = res;
+        ctx.body = {
+            code: 200,
+            message: '创建成功',
+            success: true,
+            data: {
+                userInfo: user,
+            },
+        };
     }
 
     async updateInfo(ctx) {

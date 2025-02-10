@@ -14,8 +14,13 @@ class LoginController {
         });
         console.log(token);
         ctx.body = {
-            token,
-            ...ctx.userinfo,
+            code: 200,
+            message: '登录成功',
+            success: true,
+            data: {
+                token,
+                userInfo: ctx.userinfo,
+            },
         };
     }
     async loginWithGitee(ctx, next) {
