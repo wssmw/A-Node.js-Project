@@ -1,6 +1,7 @@
-const app = require('./app');
 const config = require('./app/config');
+require('dotenv-flow').config();
 
+const app = require('./app');
 const connection = require('./app/database');
 
 app.listen(config.SERVER_PORT, () => {
