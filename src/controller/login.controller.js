@@ -2,6 +2,7 @@ const jwt = require('jsonwebtoken');
 
 const { PRIVATE_KEY } = require('../app/config');
 const service = require('../service/user.service');
+const { handeleSuccessReturnMessage } = require('../utils');
 
 class LoginController {
     async login(ctx, next) {
@@ -13,15 +14,10 @@ class LoginController {
             algorithm: 'RS256',
         });
         console.log(token);
-        ctx.body = {
-            code: 200,
-            message: '登录成功',
-            success: true,
-            data: {
-                token,
-                userInfo: ctx.userinfo,
-            },
-        };
+        handeleSuccessReturnMessage(ctx, '登录成功', {
+            token,
+            userInfo: ctx.userinfo,
+        });
     }
     async loginWithGitee(ctx, next) {
         let userInfo = ctx.userInfo;
@@ -42,12 +38,12 @@ class LoginController {
             expiresIn: 60 * 60 * 24,
             algorithm: 'RS256',
         });
-        ctx.body = {
+        handeleSuccessReturnMessage(ctx, '登录成功', {
             token,
             userInfo: {
                 ...result[0],
             },
-        };
+        });
     }
     async seccess(ctx, next) {
         ctx.body = '授权成功';

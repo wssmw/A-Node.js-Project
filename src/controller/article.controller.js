@@ -52,6 +52,7 @@ class ArticleController {
             ctx.body = {
                 code: 200,
                 message: '文章创建成功',
+                success: true,
                 data: {
                     id: result.insertId,
                 },

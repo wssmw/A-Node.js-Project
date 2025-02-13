@@ -91,6 +91,7 @@ class UserController {
                 ctx.body = {
                     code: 200,
                     message: '没有信息需要更新',
+                    success: true,
                 };
                 return;
             }
@@ -110,6 +111,7 @@ class UserController {
                 code: 200,
                 message: '用户信息更新成功',
                 data: updatedUser,
+                success: true,
             };
         } catch (error) {
             console.error('完整错误信息:', error);
