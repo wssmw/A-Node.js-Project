@@ -32,7 +32,7 @@ const verifyLogin = async (ctx, next) => {
     }
     // 4.判断账号密码和数据库中的是否相同
     if (userinfo.password != md5password(password)) {
-        const err = new Error('123333');
+        const err = new Error('password_is_incorrent');
         return ctx.app.emit('err', err, ctx);
     }
     // if (userinfo.avatar_url) {

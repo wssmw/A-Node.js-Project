@@ -23,6 +23,6 @@ loginRouter.get('/login/gitee', redirectLogin);
 loginRouter.get('/login/gitee/callback', getAccessToken, loginWithGitee);
 
 // 验证登录是否成功
-loginRouter.get('/test', verifyAuth, seccess);
+loginRouter.get('/test', seccess);
 
 module.exports = loginRouter;

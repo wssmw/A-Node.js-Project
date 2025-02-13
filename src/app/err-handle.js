@@ -25,7 +25,12 @@ const errHandle = (err, ctx) => {
         default:
             (status = 404), (message = 'NOT FOUND');
     }
-    (ctx.body = message), (ctx.status = status);
+    ctx.body = {
+        code: status,
+        message,
+        success: false,
+    };
+    ctx.status = status;
 };
 
 module.exports = errHandle;
