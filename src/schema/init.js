@@ -115,11 +115,16 @@ async function updateTable(tableName) {
  * @param {object} fields 字段定义
  */
 function generateCreateTableSQL(tableName, fields) {
+    // 如果已经是完整的 CREATE TABLE 语句，直接返回
+    if (typeof fields === 'string') {
+        return fields;
+    }
+
     const fieldDefinitions = [];
-    console.log(fields, 'fields');
+    
     for (const [field, definition] of Object.entries(fields)) {
-        if (field === 'FOREIGN KEY') {
-            fieldDefinitions.push(`FOREIGN KEY ${definition}`);
+        if (field === 'FOREIGN KEY' || field === 'FOREIGN KEY ' || field === 'UNIQUE KEY') {
+            fieldDefinitions.push(`${field} ${definition}`);
         } else {
             fieldDefinitions.push(`${field} ${definition}`);
         }
@@ -128,7 +133,7 @@ function generateCreateTableSQL(tableName, fields) {
     return `
     CREATE TABLE IF NOT EXISTS ${tableName} (
       ${fieldDefinitions.join(',\n      ')}
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
   `;
 }
 
@@ -137,7 +142,6 @@ function generateCreateTableSQL(tableName, fields) {
  */
 async function initDatabase() {
     try {
-        // 修改表名从 articleTags 到 article_tags
         const tableOrder = [
             'users',
             'categories',
@@ -150,12 +154,16 @@ async function initDatabase() {
             const exists = await checkTableExists(tableName);
 
             if (!exists) {
-                // 表不存在，创建新表
                 const fields = TABLES[tableName];
-                console.log(TABLES, 'fields');
                 const sql = generateCreateTableSQL(tableName, fields);
-                await connection.execute(sql);
-                console.log(`表 ${tableName} 创建成功`);
+                try {
+                    await connection.execute(sql);
+                    console.log(`表 ${tableName} 创建成功`);
+                } catch (error) {
+                    console.error(`创建表 ${tableName} 失败:`, error);
+                    console.error('SQL:', sql);
+                    throw error;
+                }
             }
         }
         console.log('数据库初始化/更新完成');
