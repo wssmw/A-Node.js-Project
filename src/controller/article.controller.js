@@ -1,6 +1,10 @@
 const articleService = require('../service/article.service');
 const fs = require('fs');
 const path = require('path');
+const {
+    handeleSuccessReturnMessage,
+    handeleErrorReturnMessage,
+} = require('../utils');
 
 // 添加上传目录常量
 const { SERVER_HOST, SERVER_PORT } = process.env;
@@ -48,15 +52,9 @@ class ArticleController {
                 category,
                 userId,
             });
-
-            ctx.body = {
-                code: 200,
-                message: '文章创建成功',
-                success: true,
-                data: {
-                    id: result.insertId,
-                },
-            };
+            handeleSuccessReturnMessage(ctx, '文章创建成功', {
+                id: result.insertId,
+            });
         } catch (error) {
             // 如果出错且上传了文件，删除文件
             if (ctx.file) {
@@ -65,13 +63,7 @@ class ArticleController {
                     fs.unlinkSync(filePath);
                 }
             }
-
-            ctx.status = 500;
-            ctx.body = {
-                code: 500,
-                message: '服务器内部错误',
-                error: error.message,
-            };
+            handeleErrorReturnMessage(ctx, error.message);
         }
     }
 
@@ -88,18 +80,11 @@ class ArticleController {
                 };
                 return;
             }
-
-            ctx.body = {
-                code: 200,
-                data: article,
-            };
+            handeleSuccessReturnMessage(ctx, '成功', {
+                article,
+            });
         } catch (error) {
-            ctx.status = 500;
-            ctx.body = {
-                code: 500,
-                message: '服务器内部错误',
-                error: error.message,
-            };
+            handeleErrorReturnMessage(ctx, error.message);
         }
     }
 
@@ -122,27 +107,17 @@ class ArticleController {
                 userId: userId ? parseInt(userId) : undefined,
                 keyword,
             });
-
-            ctx.body = {
-                code: 200,
-                data: {
-                    articles: result.articles.map(item => {
-                        if (item.cover_url) {
-                            item.cover_url = `http://${SERVER_HOST}:${SERVER_PORT}/${item.cover_url}`;
-                        }
-                        return item;
-                    }),
-                    total: result.total,
-                },
-            };
+            handeleSuccessReturnMessage(ctx, '成功', {
+                articles: result.articles.map(item => {
+                    if (item.cover_url) {
+                        item.cover_url = `http://${SERVER_HOST}:${SERVER_PORT}/${item.cover_url}`;
+                    }
+                    return item;
+                }),
+                total: result.total,
+            });
         } catch (error) {
-            console.error('获取文章列表错误:', error);
-            ctx.status = 500;
-            ctx.body = {
-                code: 500,
-                message: '服务器内部错误',
-                error: error.message,
-            };
+            handeleErrorReturnMessage(ctx, error.message);
         }
     }
 }

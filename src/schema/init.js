@@ -121,9 +121,13 @@ function generateCreateTableSQL(tableName, fields) {
     }
 
     const fieldDefinitions = [];
-    
+
     for (const [field, definition] of Object.entries(fields)) {
-        if (field === 'FOREIGN KEY' || field === 'FOREIGN KEY ' || field === 'UNIQUE KEY') {
+        if (
+            field === 'FOREIGN KEY' ||
+            field === 'FOREIGN KEY ' ||
+            field === 'UNIQUE KEY'
+        ) {
             fieldDefinitions.push(`${field} ${definition}`);
         } else {
             fieldDefinitions.push(`${field} ${definition}`);
@@ -148,6 +152,7 @@ async function initDatabase() {
             'tags',
             'articles',
             'article_tags',
+            'comments',
         ];
 
         for (const tableName of tableOrder) {

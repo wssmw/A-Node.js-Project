@@ -16,9 +16,9 @@ commentRouter.post('/create', verifyAuth, create);
 commentRouter.post('/deleteCommentById', verifyAuth, remove);
 
 // 获取文章评论列表
-commentRouter.get('/getCommentList', getCommentList);
+commentRouter.post('/getCommentList', getCommentList);
 
 // 获取评论详情
 commentRouter.post('/getCommentById', getCommentById);
 
-module.exports = commentRouter; 
+module.exports = commentRouter;

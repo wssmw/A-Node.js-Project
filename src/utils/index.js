@@ -20,10 +20,11 @@ const handeleSuccessReturnMessage = (ctx, message = '成功', data) => {
  * @param {string} ctx
  * @param {string} message 失败原因
  */
-const handeleErrorReturnMessage = (ctx, message = '失败') => {
+const handeleErrorReturnMessage = (ctx, message = '失败', code = 400) => {
+    ctx.status = code;
     ctx.body = {
         success: false,
-        code: 400,
+        code,
         message,
     };
 };
