@@ -81,7 +81,7 @@ class ArticleController {
                 return;
             }
             handeleSuccessReturnMessage(ctx, '成功', {
-                article,
+                ...article,
             });
         } catch (error) {
             handeleErrorReturnMessage(ctx, error.message);

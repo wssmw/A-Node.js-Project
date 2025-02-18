@@ -12,6 +12,6 @@ articleRouter.post('/create', verifyAuth, upload.single('cover'), create);
 articleRouter.post('/getArticle', find);
 
 // 获取文章详情（不需要登录）
-articleRouter.post('/getArticle/:id', findById);
+articleRouter.get('/getArticle/:id', findById);
 
 module.exports = articleRouter;
