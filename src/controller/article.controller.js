@@ -12,10 +12,9 @@ const { SERVER_HOST, SERVER_PORT } = process.env;
 class ArticleController {
     async create(ctx) {
         try {
-            const { title, content, summary, tags, category } =
+            const { title, content, summary, tags, category, cover_url } =
                 ctx.request.body;
             const { id: userId } = ctx.userinfo;
-            const file = ctx.file; // 获取上传的封面图片
 
             // 验证必填字段
             if (!title || !content || !summary || !category) {
@@ -35,12 +34,6 @@ class ArticleController {
                     message: '标签必须是数组',
                 };
                 return;
-            }
-
-            // 处理封面图片
-            let cover_url = null;
-            if (file) {
-                cover_url = file.path;
             }
 
             const result = await articleService.createArticle({
@@ -65,6 +58,14 @@ class ArticleController {
             }
             handeleErrorReturnMessage(ctx, error.message);
         }
+    }
+
+    async uploadFile(ctx) {
+        const file = ctx.file; // 获取上传的封面图片
+        console.log(ctx, 'file');
+        handeleSuccessReturnMessage(ctx, '上传成功', {
+            url: `http://${SERVER_HOST}:${SERVER_PORT}/${file.path}`,
+        });
     }
 
     async findById(ctx) {
@@ -108,12 +109,7 @@ class ArticleController {
                 keyword,
             });
             handeleSuccessReturnMessage(ctx, '成功', {
-                articles: result.articles.map(item => {
-                    if (item.cover_url) {
-                        item.cover_url = `http://${SERVER_HOST}:${SERVER_PORT}/${item.cover_url}`;
-                    }
-                    return item;
-                }),
+                articles: result.articles,
                 total: result.total,
             });
         } catch (error) {

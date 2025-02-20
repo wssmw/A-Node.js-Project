@@ -4,12 +4,12 @@ const fs = require('fs');
 
 // 文件上传配置
 const uploadConfig = {
-    avatar: {
+    users: {
         dir: 'uploads/avatar',
         prefix: 'avatar',
         maxSize: 2 * 1024 * 1024, // 2MB
     },
-    cover: {
+    article: {
         dir: 'uploads/article',
         prefix: 'article',
         maxSize: 5 * 1024 * 1024, // 5MB
@@ -31,8 +31,10 @@ function getFileConfig(fieldName) {
 // 配置文件存储
 const storage = multer.diskStorage({
     destination: function (ctx, file, cb) {
-        console.log('ct123x', file);
-        const config = getFileConfig(file.fieldname);
+        console.log('ct123x', ctx._parsedUrl);
+        console.log('ct123x', ctx._parsedUrl.path.split('/')[1]);
+        console.log('ct123x', ctx._parsedUrl.path.split('/')[1]);
+        const config = getFileConfig(ctx._parsedUrl.path.split('/')[1]);
         console.log('保存文件到:', config.dir);
         cb(null, config.dir);
     },
