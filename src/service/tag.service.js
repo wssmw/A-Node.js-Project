@@ -36,13 +36,29 @@ class TagService {
 
     // 获取标签列表
     async getList() {
+        // 获取标签列表
         const statement = `
-            SELECT id, name, created_at, updated_at 
-            FROM tags 
-            ORDER BY created_at DESC
+            SELECT 
+                t.id, 
+                t.name, 
+                t.created_at, 
+                t.updated_at,
+                COUNT(at.article_id) as article_count
+            FROM tags t
+            LEFT JOIN article_tags at ON t.id = at.tag_id
+            GROUP BY t.id
+            ORDER BY t.created_at DESC
         `;
-        const [result] = await connection.execute(statement);
-        return result;
+        const [tags] = await connection.execute(statement);
+
+        // 获取总数
+        const countStatement = `SELECT COUNT(*) as total FROM tags`;
+        const [countResult] = await connection.execute(countStatement);
+        
+        return {
+            tags,
+            total: countResult[0].total
+        };
     }
 
     // 获取单个标签

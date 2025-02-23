@@ -1,4 +1,5 @@
 const tagService = require('../service/tag.service');
+const { handeleSuccessReturnMessage } = require('../utils');
 
 class TagController {
     // 创建标签
@@ -88,11 +89,11 @@ class TagController {
 
     // 获取标签列表
     async getTagList(ctx) {
-        const tags = await tagService.getList();
-        ctx.body = {
-            code: 200,
-            data: tags
-        };
+        const result = await tagService.getList();
+        handeleSuccessReturnMessage(ctx, '获取成功', {
+            tags: result.tags,
+            total: result.total
+        });
     }
 
     // 获取单个标签
