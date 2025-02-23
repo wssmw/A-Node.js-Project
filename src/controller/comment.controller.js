@@ -16,21 +16,23 @@ class CommentController {
             return;
         }
 
-        const result = await commentService.create(
-            userId,
-            articleId,
-            content,
-            parentId
-        );
+        const result = await commentService.create(userId, articleId, content, parentId);
+        
+        // 如果是回复评论，获取完整的评论信息
+        let commentInfo = null;
+        if (result.insertId) {
+            commentInfo = await commentService.getById(result.insertId);
+        }
+
         handeleSuccessReturnMessage(ctx, '评论成功', {
-            result,
+            comment: commentInfo
         });
     }
 
     // 删除评论
     async remove(ctx) {
         const { commentId } = ctx.request.body;
-        const { id: userId } = ctx.user;
+        const { id: userId } = ctx.userinfo;
 
         try {
             await commentService.remove(commentId, userId);
@@ -43,9 +45,15 @@ class CommentController {
     // 获取文章评论列表
     async getCommentList(ctx) {
         const { articleId } = ctx.request.body;
-        const comments = await commentService.getByArticleId(articleId);
-        handeleSuccessReturnMessage(ctx, '成功', {
-            comments,
+        const { offset = 0, limit = 10 } = ctx.query;
+
+        const result = await commentService.getByArticleId(articleId, parseInt(offset), parseInt(limit));
+        
+        handeleSuccessReturnMessage(ctx, '获取成功', {
+            comments: result.comments,
+            total: result.total,
+            offset: parseInt(offset),
+            limit: parseInt(limit)
         });
     }
 
@@ -58,8 +66,9 @@ class CommentController {
             handeleErrorReturnMessage(ctx, '评论不存在');
             return;
         }
-        handeleSuccessReturnMessage(ctx, '成功', {
-            comment,
+
+        handeleSuccessReturnMessage(ctx, '获取成功', {
+            comment
         });
     }
 }
