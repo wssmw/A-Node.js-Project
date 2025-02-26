@@ -7,7 +7,12 @@ class CommentService {
             INSERT INTO comments (user_id, article_id, content, parent_id)
             VALUES (?, ?, ?, ?)
         `;
-        const [result] = await connection.execute(statement, [userId, articleId, content, parentId]);
+        const [result] = await connection.execute(statement, [
+            userId,
+            articleId,
+            content,
+            parentId,
+        ]);
         return result;
     }
 
@@ -15,19 +20,24 @@ class CommentService {
     async remove(commentId, userId) {
         // 检查是否是评论作者
         const checkStatement = `SELECT user_id FROM comments WHERE id = ?`;
-        const [checkResult] = await connection.execute(checkStatement, [commentId]);
-        
+        const [checkResult] = await connection.execute(checkStatement, [
+            commentId,
+        ]);
+
         if (checkResult.length === 0) {
             throw new Error('评论不存在');
         }
-        
+
         if (checkResult[0].user_id !== userId) {
             throw new Error('无权删除此评论');
         }
 
         // 删除此评论及其所有回复
         const statement = `DELETE FROM comments WHERE id = ? OR parent_id = ?`;
-        const [result] = await connection.execute(statement, [commentId, commentId]);
+        const [result] = await connection.execute(statement, [
+            commentId,
+            commentId,
+        ]);
         return result;
     }
 
@@ -102,14 +112,17 @@ class CommentService {
                 SELECT * FROM reply_chain
                 ORDER BY created_at ASC
             `;
-            const [replies] = await connection.execute(replyStatement, [comment.id, comment.id]);
+            const [replies] = await connection.execute(replyStatement, [
+                comment.id,
+                comment.id,
+            ]);
 
             // 格式化评论数据
             comment.user = {
                 id: comment.user_id,
                 username: comment.username,
                 nickname: comment.nickname,
-                avatar_url: comment.avatar_url
+                avatar_url: comment.avatar_url,
             };
 
             // 格式化回复数据
@@ -117,18 +130,19 @@ class CommentService {
                 id: reply.id,
                 content: reply.content,
                 created_at: reply.created_at,
+                parent_id: reply.parent_id,
                 user: {
                     id: reply.user_id,
                     username: reply.username,
                     nickname: reply.nickname,
-                    avatar_url: reply.avatar_url
+                    avatar_url: reply.avatar_url,
                 },
                 reply_to: {
                     id: reply.reply_to_user_id,
                     username: reply.reply_to_username,
                     nickname: reply.reply_to_nickname,
-                    avatar_url: reply.reply_to_avatar_url
-                }
+                    avatar_url: reply.reply_to_avatar_url,
+                },
             }));
 
             // 删除多余的字段
@@ -144,11 +158,13 @@ class CommentService {
             FROM comments 
             WHERE article_id = ? AND parent_id IS NULL
         `;
-        const [countResult] = await connection.execute(countStatement, [articleId]);
+        const [countResult] = await connection.execute(countStatement, [
+            articleId,
+        ]);
 
         return {
             comments: mainComments,
-            total: countResult[0].total
+            total: countResult[0].total,
         };
     }
 
@@ -180,8 +196,8 @@ class CommentService {
                     id: result[0].user_id,
                     username: result[0].username,
                     nickname: result[0].nickname,
-                    avatar_url: result[0].avatar_url
-                }
+                    avatar_url: result[0].avatar_url,
+                },
             };
 
             // 如果是回复，获取被回复的评论信息
@@ -197,22 +213,25 @@ class CommentService {
                     LEFT JOIN users u ON c.user_id = u.id
                     WHERE c.id = ?
                 `;
-                const [parentResult] = await connection.execute(parentStatement, [comment.parent_id]);
+                const [parentResult] = await connection.execute(
+                    parentStatement,
+                    [comment.parent_id]
+                );
                 if (parentResult[0]) {
                     comment.reply_to = {
                         id: parentResult[0].user_id,
                         username: parentResult[0].username,
                         nickname: parentResult[0].nickname,
-                        avatar_url: parentResult[0].avatar_url
+                        avatar_url: parentResult[0].avatar_url,
                     };
                 }
             }
 
             return comment;
         }
-        
+
         return null;
     }
 }
 
-module.exports = new CommentService(); 
+module.exports = new CommentService();
