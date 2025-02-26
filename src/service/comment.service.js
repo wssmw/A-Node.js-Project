@@ -42,7 +42,7 @@ class CommentService {
     }
 
     // 获取文章的评论列表
-    async getByArticleId(articleId) {
+    async getByArticleId(articleId, userId = null) {
         // 获取主评论
         const statement = `
             SELECT 
@@ -53,13 +53,16 @@ class CommentService {
                 u.username,
                 u.nickname,
                 u.avatar_url,
-                (SELECT COUNT(*) FROM comments WHERE parent_id = c.id) as reply_count
+                (SELECT COUNT(*) FROM comments WHERE parent_id = c.id) as reply_count,
+                (SELECT COUNT(*) FROM comment_likes WHERE comment_id = c.id) as like_count,
+                ${userId ? `EXISTS (SELECT 1 FROM comment_likes WHERE comment_id = c.id AND user_id = ?) as has_liked` : 'FALSE as has_liked'}
             FROM comments c
             LEFT JOIN users u ON c.user_id = u.id
             WHERE c.article_id = ? AND c.parent_id IS NULL
             ORDER BY c.created_at DESC
         `;
-        const [mainComments] = await connection.execute(statement, [articleId]);
+        const params = userId ? [userId, articleId] : [articleId];
+        const [mainComments] = await connection.execute(statement, params);
 
         // 获取所有回复（包括回复主评论的和回复回复的）
         for (let comment of mainComments) {
@@ -75,6 +78,8 @@ class CommentService {
                         u.username,
                         u.nickname,
                         u.avatar_url,
+                        (SELECT COUNT(*) FROM comment_likes WHERE comment_id = c.id) as like_count,
+                        ${userId ? `EXISTS (SELECT 1 FROM comment_likes WHERE comment_id = c.id AND user_id = ?) as has_liked` : 'FALSE as has_liked'},
                         parent_c.user_id as reply_to_user_id,
                         parent_u.username as reply_to_username,
                         parent_u.nickname as reply_to_nickname,
@@ -98,6 +103,8 @@ class CommentService {
                         u.username,
                         u.nickname,
                         u.avatar_url,
+                        (SELECT COUNT(*) FROM comment_likes WHERE comment_id = c.id) as like_count,
+                        ${userId ? `EXISTS (SELECT 1 FROM comment_likes WHERE comment_id = c.id AND user_id = ?) as has_liked` : 'FALSE as has_liked'},
                         parent_c.user_id as reply_to_user_id,
                         parent_u.username as reply_to_username,
                         parent_u.nickname as reply_to_nickname,
@@ -112,10 +119,13 @@ class CommentService {
                 SELECT * FROM reply_chain
                 ORDER BY created_at ASC
             `;
-            const [replies] = await connection.execute(replyStatement, [
-                comment.id,
-                comment.id,
-            ]);
+            const replyParams = userId
+                ? [userId, comment.id, comment.id, userId]
+                : [comment.id, comment.id];
+            const [replies] = await connection.execute(
+                replyStatement,
+                replyParams
+            );
 
             // 格式化评论数据
             comment.user = {
@@ -131,6 +141,8 @@ class CommentService {
                 content: reply.content,
                 created_at: reply.created_at,
                 parent_id: reply.parent_id,
+                like_count: reply.like_count,
+                has_liked: reply.has_liked,
                 user: {
                     id: reply.user_id,
                     username: reply.username,

@@ -71,7 +71,8 @@ class ArticleController {
     async findById(ctx) {
         try {
             const { id } = ctx.params;
-            const article = await articleService.findArticleById(id);
+            const userId = ctx.userinfo ? ctx.userinfo.id : null;
+            const article = await articleService.findArticleById(id, userId);
 
             if (!article) {
                 ctx.status = 404;
@@ -95,19 +96,26 @@ class ArticleController {
                 page = 1,
                 pageSize = 10,
                 category,
-                userId,
+                userId: authorId,
                 keyword,
             } = ctx.request.body;
-            console.log(ctx.request.body, 'page');
+            const userId = ctx.userinfo ? ctx.userinfo.id : null;
+
             // 确保参数类型正确
             const offset = Math.max(0, parseInt(page) - 1) * parseInt(pageSize);
             const limit = parseInt(pageSize);
 
-            const result = await articleService.findArticles(offset, limit, {
-                category: category ? parseInt(category) : undefined,
-                userId: userId ? parseInt(userId) : undefined,
-                keyword,
-            });
+            const result = await articleService.findArticles(
+                offset,
+                limit,
+                {
+                    category: category ? parseInt(category) : undefined,
+                    userId: authorId ? parseInt(authorId) : undefined,
+                    keyword,
+                },
+                userId
+            );
+
             handeleSuccessReturnMessage(ctx, '成功', {
                 articles: result.articles,
                 total: result.total,

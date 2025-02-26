@@ -153,9 +153,33 @@ async function getUserInfo(access_token) {
     return response.data;
 }
 
+// 可选的身份验证中间件
+const verifyAuthOptional = async (ctx, next) => {
+    const authorization = ctx.headers.authorization;
+    if (!authorization) {
+        // 如果没有token，继续执行但不设置userinfo
+        await next();
+        return;
+    }
+    console.log('authorization>>', authorization);
+    try {
+        const token = authorization.replace('Bearer ', '');
+        const result = jwt.verify(token, PUBLIC_KEY, {
+            algorithms: ['RS256'],
+        });
+        ctx.userinfo = result;
+    } catch (err) {
+        // 如果token无效，不设置userinfo
+        console.error('Token verification failed:', err);
+    }
+    // 无论token是否有效，都继续执行
+    await next();
+};
+
 module.exports = {
     verifyLogin,
     verifyAuth,
+    verifyAuthOptional,
     getAccessToken,
     redirectLogin,
 };

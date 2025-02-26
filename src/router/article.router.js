@@ -1,5 +1,8 @@
 const Router = require('koa-router');
-const { verifyAuth } = require('../middleware/login.middleware');
+const {
+    verifyAuth,
+    verifyAuthOptional,
+} = require('../middleware/login.middleware');
 const {
     create,
     findById,
@@ -15,10 +18,10 @@ articleRouter.post('/create', verifyAuth, create);
 //
 articleRouter.post('/upload', verifyAuth, upload.single('file'), uploadFile);
 
-// 获取文章列表（不需要登录）
-articleRouter.post('/getArticle', find);
+// 获取文章列表（可选登录）
+articleRouter.post('/getArticle', verifyAuthOptional, find);
 
-// 获取文章详情（不需要登录）
-articleRouter.get('/getArticle/:id', findById);
+// 获取文章详情（可选登录）
+articleRouter.get('/getArticle/:id', verifyAuthOptional, findById);
 
 module.exports = articleRouter;

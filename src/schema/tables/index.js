@@ -7,6 +7,8 @@ const categories = require('./categories'); // 分类表
 const tags = require('./tags'); // 标签表
 const articleTags = require('./article_tags'); // 文章-标签关联表
 const comments = require('./comments'); // 添加评论表
+const articleLikes = require('./article_likes'); // 添加评论表
+const commentLikes = require('./comment_likes'); // 添加评论表
 
 /**
  * 表关系说明：
@@ -22,4 +24,6 @@ module.exports = {
     articles, // 然后是文章表（依赖用户表和分类表）
     article_tags: articleTags, // 最后是文章标签关联表（依赖文章表和标签表）
     comments, // 添加到导出对象中
+    article_likes: articleLikes,
+    comment_likes: commentLikes,
 };
