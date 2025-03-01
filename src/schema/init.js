@@ -162,6 +162,8 @@ async function initDatabase() {
             'collections',
             'collection_articles',
             'article_views',
+            'user_follows',
+            'tag_follows',  
         ];
 
         for (const tableName of tableOrder) {
