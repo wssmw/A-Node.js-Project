@@ -9,15 +9,20 @@ class CommentController {
     async create(ctx) {
         const { articleId, content, parentId } = ctx.request.body;
         const { id: userId } = ctx.userinfo;
-
+        console.log('id>>>', userId);
         // 验证评论内容
         if (!content || content.trim().length === 0) {
             handeleErrorReturnMessage(ctx, '评论内容不能为空');
             return;
         }
 
-        const result = await commentService.create(userId, articleId, content, parentId);
-        
+        const result = await commentService.create(
+            userId,
+            articleId,
+            content,
+            parentId
+        );
+
         // 如果是回复评论，获取完整的评论信息
         let commentInfo = null;
         if (result.insertId) {
@@ -25,7 +30,7 @@ class CommentController {
         }
 
         handeleSuccessReturnMessage(ctx, '评论成功', {
-            comment: commentInfo
+            comment: commentInfo,
         });
     }
 
@@ -46,14 +51,16 @@ class CommentController {
     async getCommentList(ctx) {
         const { articleId } = ctx.request.body;
         const { offset = 0, limit = 10 } = ctx.query;
+        const userId = ctx.userinfo ? ctx.userinfo.id : null;
+        console.log('id>>>', userId);
 
-        const result = await commentService.getByArticleId(articleId, parseInt(offset), parseInt(limit));
-        
+        const result = await commentService.getByArticleId(articleId, userId);
+
         handeleSuccessReturnMessage(ctx, '获取成功', {
             comments: result.comments,
             total: result.total,
             offset: parseInt(offset),
-            limit: parseInt(limit)
+            limit: parseInt(limit),
         });
     }
 
@@ -68,7 +75,7 @@ class CommentController {
         }
 
         handeleSuccessReturnMessage(ctx, '获取成功', {
-            comment
+            comment,
         });
     }
 }

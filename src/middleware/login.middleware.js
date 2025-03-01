@@ -10,9 +10,16 @@ const CLIENT_ID =
     '345c224984e879d914da13cd4dd4b92cdbf217722342f2bfc46db724ca7ad681';
 const CLIENT_SECRET =
     '9ae0cc711853df7e0b6441e2926c0bd3513dd6df57be5e79174a9ffb9da8868b';
+
+const GITEE_OWNER = 'wangsaiqimengwen';
+const GITEE_REPO = 'blog-project';
+const SHA = 'dev';
+const GITEE_ACCESS_TOKEN = 'bbdde2639307d5a01b1ca366d27132c8';
+
 const REDIRECTURL = 'http://localhost:8000';
 const { PRIVATE_KEY, PUBLIC_KEY } = require('../app/config');
 const { default: axios } = require('axios');
+const { handeleSuccessReturnMessage } = require('../utils');
 const { SERVER_HOST, SERVER_PORT } = process.env;
 
 const verifyLogin = async (ctx, next) => {
@@ -153,9 +160,44 @@ async function getUserInfo(access_token) {
     return response.data;
 }
 
+// 可选的身份验证中间件
+const verifyAuthOptional = async (ctx, next) => {
+    const authorization = ctx.headers.authorization;
+    if (!authorization) {
+        // 如果没有token，继续执行但不设置userinfo
+        await next();
+        return;
+    }
+    console.log('authorization>>', authorization);
+    try {
+        const token = authorization.replace('Bearer ', '');
+        const result = jwt.verify(token, PUBLIC_KEY, {
+            algorithms: ['RS256'],
+        });
+        ctx.userinfo = result;
+    } catch (err) {
+        // 如果token无效，不设置userinfo
+        console.error('Token verification failed:', err);
+    }
+    // 无论token是否有效，都继续执行
+    await next();
+};
+
+const getCommitMessage = async (ctx, next) => {
+    const result = await axios.get(
+        `https://gitee.com/api/v5/repos/${GITEE_OWNER}/${GITEE_REPO}/commits?access_token=${GITEE_ACCESS_TOKEN}&sha=${SHA}`
+    );
+    handeleSuccessReturnMessage(ctx, '获取成功', {
+        commits: result.data,
+        total: result.data.length,
+    });
+};
+
 module.exports = {
     verifyLogin,
     verifyAuth,
+    verifyAuthOptional,
     getAccessToken,
     redirectLogin,
+    getCommitMessage,
 };
