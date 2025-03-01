@@ -10,6 +10,9 @@ const articleTags = require('./article_tags'); // 文章-标签关联表
 const comments = require('./comments'); // 添加评论表
 const articleLikes = require('./article_likes'); // 添加评论表
 const commentLikes = require('./comment_likes'); // 添加评论表
+const collections = require('./collections'); // 添加收藏夹表
+const collectionArticles = require('./collection_articles'); // 添加收藏夹-文章关联表
+
 
 /**
  * 表关系说明：
@@ -28,4 +31,6 @@ module.exports = {
     comments, // 添加到导出对象中
     article_likes: articleLikes,
     comment_likes: commentLikes,
+    collections,
+    collection_articles: collectionArticles,
 };
