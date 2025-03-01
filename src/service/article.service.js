@@ -64,120 +64,123 @@ class ArticleService {
         try {
             // 1. 查询文章基本信息
             const statement = `
-        SELECT 
-          a.*,
-          u.username as author_name,
-          u.nickname as author_nickname,
-          c.name as category_name,
-          (SELECT COUNT(*) FROM article_likes WHERE article_id = a.id) as like_count,
-          (SELECT COUNT(*) FROM comments WHERE article_id = a.id) as comment_count,
-          ${userId ? `EXISTS (SELECT 1 FROM article_likes WHERE article_id = a.id AND user_id = ?) as has_liked` : 'FALSE as has_liked'}
-        FROM articles a
-        LEFT JOIN users u ON a.user_id = u.id
-        LEFT JOIN categories c ON a.category_id = c.id
-        WHERE a.id = ?
-      `;
-            const params = userId ? [userId, id] : [id];
-            console.log('SQL:', statement);
-            console.log('Params:', params);
-            const [articles] = await connection.execute(statement, params);
-            console.log('Query Result:', articles[0]);
+                SELECT 
+                    a.*,
+                    u.username as author_name,
+                    u.nickname as author_nickname,
+                    c.name as category_name,
+                    (SELECT COUNT(*) FROM comments WHERE article_id = a.id) as comment_count,
+                    (SELECT COUNT(*) FROM article_likes WHERE article_id = a.id) as like_count,
+                    (SELECT COUNT(*) FROM collection_articles WHERE article_id = a.id) as collection_count,
+                    EXISTS(SELECT 1 FROM article_likes WHERE article_id = a.id AND user_id = ?) as has_liked,
+                    EXISTS(
+                        SELECT 1 FROM collection_articles ca 
+                        JOIN collections c ON ca.collection_id = c.id 
+                        WHERE ca.article_id = a.id AND c.user_id = ?
+                    ) as has_collected
+                FROM articles a
+                LEFT JOIN users u ON a.user_id = u.id
+                LEFT JOIN categories c ON a.category_id = c.id
+                WHERE a.id = ?
+            `;
+            const [articles] = await connection.execute(statement, [userId, userId, id]);
 
-            if (!articles[0]) return null;
+            if (articles.length === 0) {
+                return null;
+            }
 
-            // 2. 查询文章的标签
-            const [tags] = await connection.execute(
-                `
-        SELECT t.id, t.name
-        FROM tags t
-        JOIN article_tags at ON t.id = at.tag_id
-        WHERE at.article_id = ?
-      `,
-                [id]
-            );
+            const article = articles[0];
 
-            // 3. 合并文章信息和标签
-            return {
-                ...articles[0],
-                tags,
-            };
+            // 2. 查询文章标签
+            const tagStatement = `
+                SELECT t.id, t.name
+                FROM tags t
+                INNER JOIN article_tags at ON t.id = at.tag_id
+                WHERE at.article_id = ?
+            `;
+            const [tags] = await connection.execute(tagStatement, [id]);
+            article.tags = tags;
+
+            return article;
         } catch (error) {
-            console.error('查询文章错误:', error);
+            console.error('查询文章详情错误:', error);
             throw error;
         }
     }
 
     async findArticles(offset = 0, limit = 10, options = {}, userId = null) {
         try {
-            // 1. 构建基础查询
-            let sql = `
-        SELECT 
-          a.*,
-          u.username as author_name,
-          u.nickname as author_nickname,
-          c.name as category_name,
-          (SELECT COUNT(*) FROM article_likes WHERE article_id = a.id) as like_count,
-          (SELECT COUNT(*) FROM comments WHERE article_id = a.id) as comment_count,
-          ${userId ? `EXISTS (SELECT 1 FROM article_likes WHERE article_id = a.id AND user_id = ?) as has_liked` : 'FALSE as has_liked'}
-        FROM articles a
-        LEFT JOIN users u ON a.user_id = u.id
-        LEFT JOIN categories c ON a.category_id = c.id
-      `;
+            const { category, keyword, userId: authorId } = options;
+            const whereConditions = [];
             const params = [];
+
+            if (category) {
+                whereConditions.push('a.category_id = ?');
+                params.push(category);
+            }
+
+            if (authorId) {
+                whereConditions.push('a.user_id = ?');
+                params.push(authorId);
+            }
+
+            if (keyword) {
+                whereConditions.push('(a.title LIKE ? OR a.content LIKE ? OR a.summary LIKE ?)');
+                const likeKeyword = `%${keyword}%`;
+                params.push(likeKeyword, likeKeyword, likeKeyword);
+            }
+
+            const whereClause = whereConditions.length > 0 
+                ? `WHERE ${whereConditions.join(' AND ')}` 
+                : '';
+
+            // 查询文章列表
+            const statement = `
+                SELECT 
+                    a.*,
+                    u.username as author_name,
+                    u.nickname as author_nickname,
+                    c.name as category_name,
+                    (SELECT COUNT(*) FROM comments WHERE article_id = a.id) as comment_count,
+                    (SELECT COUNT(*) FROM article_likes WHERE article_id = a.id) as like_count,
+                    (SELECT COUNT(*) FROM collection_articles WHERE article_id = a.id) as collection_count,
+                    ${userId ? 'EXISTS(SELECT 1 FROM article_likes WHERE article_id = a.id AND user_id = ?) as has_liked' : 'FALSE as has_liked'},
+                    ${userId ? 'EXISTS(SELECT 1 FROM collection_articles ca JOIN collections c ON ca.collection_id = c.id WHERE ca.article_id = a.id AND c.user_id = ?) as has_collected' : 'FALSE as has_collected'}
+                FROM articles a
+                LEFT JOIN users u ON a.user_id = u.id
+                LEFT JOIN categories c ON a.category_id = c.id
+                ${whereClause}
+                ORDER BY a.created_at DESC
+                LIMIT ${parseInt(limit)} OFFSET ${parseInt(offset)}
+            `;
+
+            // 如果有用户ID，添加到参数列表
             if (userId) {
-                params.push(userId);
+                params.unshift(userId, userId);
             }
 
-            // 2. 添加条件查询
-            const conditions = [];
-            if (options.category) {
-                conditions.push('a.category_id = ?');
-                params.push(options.category);
-            }
-            if (options.userId) {
-                conditions.push('a.user_id = ?');
-                params.push(options.userId);
-            }
-            if (options.keyword) {
-                conditions.push('(a.title LIKE ? OR a.content LIKE ?)');
-                params.push(`%${options.keyword}%`, `%${options.keyword}%`);
-            }
+            const [articles] = await connection.execute(statement, params);
 
-            if (conditions.length > 0) {
-                sql += ` WHERE ${conditions.join(' AND ')}`;
-            }
-
-            // 3. 添加排序和分页
-            sql += ` ORDER BY a.created_at DESC LIMIT ${limit} OFFSET ${offset}`;
-
-            // 4. 执行查询
-            const [articles] = await connection.execute(sql, params);
-
-            // 5. 查询每篇文章的标签
-            for (const article of articles) {
-                const [tags] = await connection.execute(
-                    `
-          SELECT t.id, t.name
-          FROM tags t
-          JOIN article_tags at ON t.id = at.tag_id
-          WHERE at.article_id = ?
-        `,
-                    [article.id]
-                );
+            // 获取每篇文章的标签
+            for (let article of articles) {
+                const tagStatement = `
+                    SELECT t.id, t.name
+                    FROM tags t
+                    INNER JOIN article_tags at ON t.id = at.tag_id
+                    WHERE at.article_id = ?
+                `;
+                const [tags] = await connection.execute(tagStatement, [article.id]);
                 article.tags = tags;
             }
 
-            // 6. 查询总数（不包含 LIMIT 和 OFFSET 参数）
-            let countSql = `
-        SELECT COUNT(*) as total 
-        FROM articles a
-      `;
-            if (conditions.length > 0) {
-                countSql += ` WHERE ${conditions.join(' AND ')}`;
-            }
-            const [countResult] = await connection.execute(
-                countSql,
-                params.slice(userId ? 1 : 0)
+            // 获取总数
+            const countStatement = `
+                SELECT COUNT(*) as total 
+                FROM articles a 
+                ${whereClause}
+            `;
+            const [countResult] = await connection.execute(countStatement, 
+                whereConditions.length > 0 ? params.slice(userId ? 2 : 0) : []
             );
 
             return {
