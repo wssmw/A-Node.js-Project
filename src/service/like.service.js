@@ -1,35 +1,53 @@
 const connection = require('../app/database');
+const notificationService = require('./notification.service');
 
 class LikeService {
     // 文章点赞
     async likeArticle(userId, articleId) {
         try {
-            // 检查是否已经点赞
-            const checkStatement = `
-                SELECT id FROM article_likes 
-                WHERE user_id = ? AND article_id = ?
-            `;
-            const [existing] = await connection.execute(checkStatement, [userId, articleId]);
+            // 开始事务
+            const connection = await require('../app/database').getConnection();
+            await connection.beginTransaction();
 
-            if (existing.length > 0) {
-                // 如果已经点赞，则取消点赞
-                const unlikeStatement = `
-                    DELETE FROM article_likes 
-                    WHERE user_id = ? AND article_id = ?
-                `;
-                await connection.execute(unlikeStatement, [userId, articleId]);
-                return { action: 'unlike' };
-            } else {
-                // 如果未点赞，则添加点赞
-                const likeStatement = `
-                    INSERT INTO article_likes (user_id, article_id) 
+            try {
+                // 1. 添加点赞记录
+                const statement = `
+                    INSERT INTO article_likes (user_id, article_id)
                     VALUES (?, ?)
                 `;
-                await connection.execute(likeStatement, [userId, articleId]);
+                await connection.execute(statement, [userId, articleId]);
+
+                // 2. 获取文章作者ID
+                const [article] = await connection.execute(
+                    'SELECT user_id, title FROM articles WHERE id = ?',
+                    [articleId]
+                );
+
+                // 3. 创建通知
+                if (article[0] && article[0].user_id !== userId) {
+                    await notificationService.createNotification({
+                        userId: article[0].user_id,      // 通知发送给文章作者
+                        fromUserId: userId,              // 点赞的用户
+                        type: 'like_article',
+                        content: `赞了你的文章《${article[0].title}》`,
+                        targetId: articleId
+                    });
+                }
+
+                await connection.commit();
                 return { action: 'like' };
+            } catch (error) {
+                await connection.rollback();
+                throw error;
+            } finally {
+                connection.release();
             }
         } catch (error) {
-            console.error('文章点赞操作失败:', error);
+            if (error.code === 'ER_DUP_ENTRY') {
+                // 如果已经点赞，则取消点赞
+                await this.unlikeArticle(userId, articleId);
+                return { action: 'unlike' };
+            }
             throw error;
         }
     }
@@ -64,32 +82,51 @@ class LikeService {
     // 评论点赞
     async likeComment(userId, commentId) {
         try {
-            // 检查是否已经点赞
-            const checkStatement = `
-                SELECT id FROM comment_likes 
-                WHERE user_id = ? AND comment_id = ?
-            `;
-            const [existing] = await connection.execute(checkStatement, [userId, commentId]);
+            // 开始事务
+            const connection = await require('../app/database').getConnection();
+            await connection.beginTransaction();
 
-            if (existing.length > 0) {
-                // 如果已经点赞，则取消点赞
-                const unlikeStatement = `
-                    DELETE FROM comment_likes 
-                    WHERE user_id = ? AND comment_id = ?
-                `;
-                await connection.execute(unlikeStatement, [userId, commentId]);
-                return { action: 'unlike' };
-            } else {
-                // 如果未点赞，则添加点赞
-                const likeStatement = `
+            try {
+                // 1. 添加点赞记录
+                const statement = `
                     INSERT INTO comment_likes (user_id, comment_id) 
                     VALUES (?, ?)
                 `;
-                await connection.execute(likeStatement, [userId, commentId]);
+                await connection.execute(statement, [userId, commentId]);
+
+                // 2. 获取评论信息和文章信息
+                const [comment] = await connection.execute(`
+                    SELECT c.user_id, c.content, a.id as article_id, a.title 
+                    FROM comments c
+                    JOIN articles a ON c.article_id = a.id
+                    WHERE c.id = ?
+                `, [commentId]);
+
+                // 3. 创建通知
+                if (comment[0] && comment[0].user_id !== userId) {
+                    await notificationService.createNotification({
+                        userId: comment[0].user_id,
+                        fromUserId: userId,
+                        type: 'like_comment',
+                        content: `赞了你在《${comment[0].title}》中的评论`,
+                        targetId: comment[0].article_id
+                    });
+                }
+
+                await connection.commit();
                 return { action: 'like' };
+            } catch (error) {
+                await connection.rollback();
+                throw error;
+            } finally {
+                connection.release();
             }
         } catch (error) {
-            console.error('评论点赞操作失败:', error);
+            if (error.code === 'ER_DUP_ENTRY') {
+                // 如果已经点赞，则取消点赞
+                await this.unlikeComment(userId, commentId);
+                return { action: 'unlike' };
+            }
             throw error;
         }
     }

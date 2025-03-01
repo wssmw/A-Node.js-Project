@@ -15,7 +15,7 @@ const collectionArticles = require('./collection_articles'); // 添加收藏夹-
 const articleViews = require('./article_views');
 const userFollows = require('./user_follows');
 const tagFollows = require('./tag_follows');
-
+const notifications = require('./notifications');
 
 /**
  * 表关系说明：
@@ -39,4 +39,5 @@ module.exports = {
     article_views: articleViews,
     user_follows: userFollows,
     tag_follows: tagFollows,
+    notifications,
 };
