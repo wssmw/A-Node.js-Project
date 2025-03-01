@@ -16,7 +16,7 @@ userRouter.post('/register', verifyUser, handlePassword, create);
 userRouter.post(
     '/updateUserAvatar', 
     verifyAuth,
-    upload.single('avatar'),
+    upload.any(),
     updateUserAvatar
 );
 

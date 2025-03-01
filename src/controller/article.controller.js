@@ -1,13 +1,29 @@
 const articleService = require('../service/article.service');
-const fs = require('fs');
+const fs = require('fs').promises;
+const fsSync = require('fs');
 const path = require('path');
 const {
     handeleSuccessReturnMessage,
     handeleErrorReturnMessage,
 } = require('../utils');
+const { getFileUrl } = require('../middleware/file.middleware');
 
 // 添加上传目录常量
 const { SERVER_HOST, SERVER_PORT } = process.env;
+
+// 复用相同的安全删除函数
+async function safeDeleteFile(filePath) {
+    try {
+        if (fsSync.existsSync(filePath)) {
+            await fs.unlink(filePath);
+            return true;
+        }
+        return false;
+    } catch (error) {
+        console.error('删除文件失败:', error);
+        return false;
+    }
+}
 
 class ArticleController {
     async create(ctx) {
@@ -61,11 +77,25 @@ class ArticleController {
     }
 
     async uploadFile(ctx) {
-        const file = ctx.file; // 获取上传的封面图片
-        console.log(ctx, 'file');
-        handeleSuccessReturnMessage(ctx, '上传成功', {
-            url: `http://${SERVER_HOST}:${SERVER_PORT}/${file.path}`,
-        });
+        const files = ctx.request.files || ctx.files;
+        if (!files || files.length === 0) {
+            handeleErrorReturnMessage(ctx, '请上传文件');
+            return;
+        }
+
+        try {
+            // 获取第一个文件
+            const file = files[0];
+            handeleSuccessReturnMessage(ctx, '上传成功', {
+                url: getFileUrl(file.path)
+            });
+        } catch (error) {
+            // 如果出错，删除已上传的文件
+            if (files && files.length > 0) {
+                await safeDeleteFile(files[0].path);
+            }
+            handeleErrorReturnMessage(ctx, '上传失败: ' + error.message);
+        }
     }
 
     async findById(ctx) {
