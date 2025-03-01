@@ -60,9 +60,14 @@ class ArticleService {
         }
     }
 
-    async findArticleById(id, userId = null) {
+    async findArticleById(id, userId = null, ip = null, userAgent = null) {
         try {
-            // 1. 查询文章基本信息
+            // 先记录浏览
+            if (ip) {
+                await this.recordView(id, userId, ip, userAgent);
+            }
+
+            // 查询文章信息
             const statement = `
                 SELECT 
                     a.*,
@@ -72,18 +77,18 @@ class ArticleService {
                     (SELECT COUNT(*) FROM comments WHERE article_id = a.id) as comment_count,
                     (SELECT COUNT(*) FROM article_likes WHERE article_id = a.id) as like_count,
                     (SELECT COUNT(*) FROM collection_articles WHERE article_id = a.id) as collection_count,
-                    EXISTS(SELECT 1 FROM article_likes WHERE article_id = a.id AND user_id = ?) as has_liked,
-                    EXISTS(
-                        SELECT 1 FROM collection_articles ca 
-                        JOIN collections c ON ca.collection_id = c.id 
-                        WHERE ca.article_id = a.id AND c.user_id = ?
-                    ) as has_collected
+                    (SELECT COUNT(*) FROM article_views WHERE article_id = a.id) as view_count,
+                    (SELECT COUNT(DISTINCT ip) FROM article_views WHERE article_id = a.id) as unique_view_count,
+                    ${userId ? 'EXISTS(SELECT 1 FROM article_likes WHERE article_id = a.id AND user_id = ?) as has_liked' : 'FALSE as has_liked'},
+                    ${userId ? 'EXISTS(SELECT 1 FROM collection_articles ca JOIN collections c ON ca.collection_id = c.id WHERE ca.article_id = a.id AND c.user_id = ?) as has_collected' : 'FALSE as has_collected'}
                 FROM articles a
                 LEFT JOIN users u ON a.user_id = u.id
                 LEFT JOIN categories c ON a.category_id = c.id
                 WHERE a.id = ?
             `;
-            const [articles] = await connection.execute(statement, [userId, userId, id]);
+            
+            const params = userId ? [userId, userId, id] : [id];
+            const [articles] = await connection.execute(statement, params);
 
             if (articles.length === 0) {
                 return null;
@@ -91,7 +96,7 @@ class ArticleService {
 
             const article = articles[0];
 
-            // 2. 查询文章标签
+            // 查询文章标签
             const tagStatement = `
                 SELECT t.id, t.name
                 FROM tags t
@@ -144,6 +149,8 @@ class ArticleService {
                     (SELECT COUNT(*) FROM comments WHERE article_id = a.id) as comment_count,
                     (SELECT COUNT(*) FROM article_likes WHERE article_id = a.id) as like_count,
                     (SELECT COUNT(*) FROM collection_articles WHERE article_id = a.id) as collection_count,
+                    (SELECT COUNT(*) FROM article_views WHERE article_id = a.id) as view_count,
+                    (SELECT COUNT(DISTINCT ip) FROM article_views WHERE article_id = a.id) as unique_view_count,
                     ${userId ? 'EXISTS(SELECT 1 FROM article_likes WHERE article_id = a.id AND user_id = ?) as has_liked' : 'FALSE as has_liked'},
                     ${userId ? 'EXISTS(SELECT 1 FROM collection_articles ca JOIN collections c ON ca.collection_id = c.id WHERE ca.article_id = a.id AND c.user_id = ?) as has_collected' : 'FALSE as has_collected'}
                 FROM articles a
@@ -249,6 +256,37 @@ class ArticleService {
             };
         } catch (error) {
             console.error('获取用户文章失败:', error);
+            throw error;
+        }
+    }
+
+    // 记录文章浏览
+    async recordView(articleId, userId, ip, userAgent) {
+        try {
+            // 检查最近2小时内是否已经浏览过
+            const checkStatement = `
+                SELECT id 
+                FROM article_views 
+                WHERE article_id = ? 
+                AND ip = ? 
+                AND created_at > DATE_SUB(NOW(), INTERVAL 24 HOUR)
+                ${userId ? 'AND user_id = ?' : ''}
+                LIMIT 1
+            `;
+            
+            const checkParams = userId ? [articleId, ip, userId] : [articleId, ip];
+            const [existingViews] = await connection.execute(checkStatement, checkParams);
+
+            // 如果2小时内没有浏览记录，才记录新的浏览
+            if (existingViews.length === 0) {
+                const insertStatement = `
+                    INSERT INTO article_views (article_id, user_id, ip, user_agent)
+                    VALUES (?, ?, ?, ?)
+                `;
+                await connection.execute(insertStatement, [articleId, userId, ip, userAgent]);
+            }
+        } catch (error) {
+            console.error('记录文章浏览失败:', error);
             throw error;
         }
     }

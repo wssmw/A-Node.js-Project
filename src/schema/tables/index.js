@@ -12,6 +12,7 @@ const articleLikes = require('./article_likes'); // 添加评论表
 const commentLikes = require('./comment_likes'); // 添加评论表
 const collections = require('./collections'); // 添加收藏夹表
 const collectionArticles = require('./collection_articles'); // 添加收藏夹-文章关联表
+const articleViews = require('./article_views');
 
 
 /**
@@ -33,4 +34,5 @@ module.exports = {
     comment_likes: commentLikes,
     collections,
     collection_articles: collectionArticles,
+    article_views: articleViews,
 };

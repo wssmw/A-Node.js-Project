@@ -102,17 +102,19 @@ class ArticleController {
         try {
             const { id } = ctx.params;
             const userId = ctx.userinfo ? ctx.userinfo.id : null;
-            const article = await articleService.findArticleById(id, userId);
+            
+            // 获取访问者信息
+            const ip = ctx.ip;
+            const userAgent = ctx.headers['user-agent'];
+            console.log('ip', ip, 'userAgent', userAgent);
+            const article = await articleService.findArticleById(id, userId, ip, userAgent);
 
             if (!article) {
-                ctx.status = 404;
-                ctx.body = {
-                    code: 404,
-                    message: '文章不存在',
-                };
+                handeleErrorReturnMessage(ctx, '文章不存在', 404);
                 return;
             }
-            handeleSuccessReturnMessage(ctx, '成功', {
+
+            handeleSuccessReturnMessage(ctx, '获取成功', {
                 ...article,
             });
         } catch (error) {

@@ -161,6 +161,7 @@ async function initDatabase() {
             'comment_likes',
             'collections',
             'collection_articles',
+            'article_views',
         ];
 
         for (const tableName of tableOrder) {
