@@ -2,6 +2,7 @@ const service = require('../service/user.service');
 const fs = require('fs');
 const path = require('path');
 const { SERVER_HOST, SERVER_PORT } = process.env;
+const { handeleErrorReturnMessage, handeleSuccessReturnMessage } = require('../utils');
 
 // 添加 uploadDir 常量
 const uploadDir = 'uploads/avatar';
@@ -27,109 +28,90 @@ class UserController {
         };
     }
 
-    async updateInfo(ctx) {
-        console.log('开始处理更新请求');
+    async updateUserAvatar(ctx) {
         try {
             const { id: userId } = ctx.userinfo;
-            const { nickname } = ctx.request.body;
-            const file = ctx.file; // 改为从 ctx.file 获取文件信息
-
-            console.log('文件信息:', file);
-            console.log('请求体:', ctx.request.body);
-            console.log('用户ID:', userId);
-
-            // 验证昵称
-            if (nickname !== undefined && nickname.length > 30) {
-                ctx.status = 400;
-                ctx.body = {
-                    code: 400,
-                    message: '昵称长度不能超过30个字符',
-                };
+            const file = ctx.request.file || ctx.file; // multer会将文件放在这两个位置之一
+            if (!file) {
+                handeleErrorReturnMessage(ctx, '请上传头像文件');
                 return;
             }
 
-            // 处理头像
-            let avatar_url = undefined;
-            if (file) {
-                console.log('处理文件:', file.path);
-                // 获取旧头像信息
-                const oldUser = await service.getUserById(userId);
-                // 删除旧头像文件
-                if (oldUser && oldUser.avatar_url) {
-                    const oldAvatarPath = path.join(
-                        __dirname,
-                        `../../${oldUser.avatar_url}`
-                    );
-                    console.log('oldAvatarPath', oldAvatarPath);
-                    if (fs.existsSync(oldAvatarPath)) {
-                        fs.unlinkSync(oldAvatarPath);
-                    }
-                }
-
-                // 设置新头像URL
-                avatar_url = file.path;
-                console.log('新头像URL:', avatar_url);
+            // 检查文件类型
+            const allowedTypes = ['image/jpeg', 'image/png', 'image/gif'];
+            if (!allowedTypes.includes(file.mimetype)) {
+                // 删除上传的文件
+                fs.unlinkSync(file.path);
+                handeleErrorReturnMessage(ctx, '只支持 JPG、PNG、GIF 格式的图片');
+                return;
             }
 
-            // 更新用户信息
+            // 获取旧头像信息
+            const oldUser = await service.getUserById(userId);
+            
+            // 如果有旧头像且不是默认头像，则删除旧头像文件
+            if (oldUser && oldUser.avatar_url && !oldUser.avatar_url.includes('defaultAvatar')) {
+                const oldAvatarPath = path.join(__dirname, '../../', oldUser.avatar_url);
+                if (fs.existsSync(oldAvatarPath)) {
+                    fs.unlinkSync(oldAvatarPath);
+                }
+            }
+
+            // 更新用户头像
+            const avatar_url = file.path.replace(/\\/g, '/'); // 统一使用正斜杠
             const result = await service.updateUserInfo(userId, {
-                nickname,
-                avatar_url,
+                avatar_url
             });
 
-            console.log('更新结果:', result);
-
-            if (result.affected === 0) {
-                // 如果更新失败且上传了新文件，删除新上传的文件
-                if (file) {
-                    const filePath = path.join(__dirname, '../../', avatar_url);
-                    if (fs.existsSync(filePath)) {
-                        fs.unlinkSync(filePath);
-                    }
+            // 如果更新失败，删除上传的新文件
+            if (!result) {
+                if (fs.existsSync(file.path)) {
+                    fs.unlinkSync(file.path);
                 }
-
-                ctx.body = {
-                    code: 200,
-                    message: '没有信息需要更新',
-                    success: true,
-                };
+                handeleErrorReturnMessage(ctx, '更新头像失败');
                 return;
             }
 
-            // 获取更新后的用户信息
-            const updatedUser = await service.getUserById(userId);
+            handeleSuccessReturnMessage(ctx, '头像更新成功', {
+                userInfo: result
+            });
 
-            // 添加完整的图片URL
-            if (updatedUser.avatar_url) {
-                let avatar_url = JSON.parse(
-                    JSON.stringify(updatedUser.avatar_url)
-                );
-                updatedUser.avatar_url = `${avatar_url}`;
-            }
-
-            ctx.body = {
-                code: 200,
-                message: '用户信息更新成功',
-                data: updatedUser,
-                success: true,
-            };
         } catch (error) {
-            console.error('完整错误信息:', error);
-            // 如果出错且上传了文件，删除文件
-            if (ctx.file) {
-                // 改为检查 ctx.file
-                const filePath = ctx.file.path;
-                if (fs.existsSync(filePath)) {
-                    fs.unlinkSync(filePath);
-                }
+            console.error('错误详情:', error);
+            // 发生错误时删除上传的文件
+            const file = ctx.request.file || ctx.file;
+            if (file && fs.existsSync(file.path)) {
+                fs.unlinkSync(file.path);
             }
+            handeleErrorReturnMessage(ctx, '更新头像失败: ' + error.message);
+        }
+    }
 
-            ctx.status = 500;
-            ctx.body = {
-                code: 500,
-                message: '服务器内部错误',
-                error: error.message,
-            };
+    // 更新用户信息
+    async updateUserInfo(ctx) {
+        const { id: userId } = ctx.userinfo; // 从token中获取用户ID
+        const userInfo = ctx.request.body;
+
+        try {
+            const updatedUser = await service.updateUserInfo(userId, userInfo);
+            console.log(updatedUser,'updatedUser')
+            handeleSuccessReturnMessage(ctx, '更新成功', {
+                userInfo: updatedUser
+            });
+        } catch (error) {
+            handeleErrorReturnMessage(ctx, '更新失败: ' + error.message);
+        }
+    }
+
+    // 删除用户
+    async deleteUser(ctx) {
+        const { id: userId } = ctx.userinfo; // 从token中获取用户ID
+
+        try {
+            await service.deleteUser(userId);
+            handeleSuccessReturnMessage(ctx, '删除成功');
+        } catch (error) {
+            handeleErrorReturnMessage(ctx, '删除失败: ' + error.message);
         }
     }
 }

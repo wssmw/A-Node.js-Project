@@ -47,54 +47,149 @@ class UserService {
         return result[0];
     }
 
-    async updateUserInfo(userId, userData) {
+    async updateUserInfo(userId, userInfo) {
+        let conn;
         try {
-            const { nickname, avatar_url } = userData;
-            const updateFields = [];
-            const params = [];
+            // 获取连接
+            conn = await connection.getConnection();
+            
+            // 开启事务
+            await conn.beginTransaction();
 
-            if (nickname !== undefined) {
-                updateFields.push('nickname = ?');
-                params.push(nickname);
+            // 更新users表
+            const userFields = ['nickname', 'avatar_url', 'email', 'phone'];
+            const userUpdates = [];
+            const userValues = [];
+            
+            userFields.forEach(field => {
+                if (userInfo[field] !== undefined) {
+                    userUpdates.push(`${field} = ?`);
+                    userValues.push(userInfo[field]);
+                }
+            });
+
+            if (userUpdates.length > 0) {
+                const userSql = `
+                    UPDATE users 
+                    SET ${userUpdates.join(', ')}
+                    WHERE id = ?
+                `;
+                userValues.push(userId);
+                await conn.execute(userSql, userValues);
             }
 
-            if (avatar_url !== undefined) {
-                updateFields.push('avatar_url = ?');
-                params.push(avatar_url);
+            // 更新user_profiles表
+            const profileFields = ['bio', 'qq', 'wechat', 'github', 'website', 'location', 'occupation', 'company'];
+            const profileUpdates = [];
+            const profileValues = [];
+
+            profileFields.forEach(field => {
+                if (userInfo[field] !== undefined) {
+                    profileUpdates.push(`${field} = ?`);
+                    profileValues.push(userInfo[field]);
+                }
+            });
+
+            if (profileUpdates.length > 0) {
+                // 检查是否存在profile记录
+                const [profiles] = await conn.execute(
+                    'SELECT id FROM user_profiles WHERE user_id = ?',
+                    [userId]
+                );
+
+                if (profiles.length > 0) {
+                    // 更新现有记录
+                    const profileSql = `
+                        UPDATE user_profiles 
+                        SET ${profileUpdates.join(', ')}
+                        WHERE user_id = ?
+                    `;
+                    profileValues.push(userId);
+                    await conn.execute(profileSql, profileValues);
+                } else {
+                    // 创建新记录
+                    const fields = ['user_id', ...profileFields.filter(field => userInfo[field] !== undefined)];
+                    const values = [userId, ...profileValues];
+                    const profileSql = `
+                        INSERT INTO user_profiles (${fields.join(', ')})
+                        VALUES (${fields.map(() => '?').join(', ')})
+                    `;
+                    await conn.execute(profileSql, values);
+                }
             }
 
-            if (updateFields.length === 0) {
-                return { affected: 0 };
-            }
+            // 提交事务
+            await conn.commit();
 
-            params.push(userId);
-
-            const sql = `
-        UPDATE users 
-        SET ${updateFields.join(', ')}, updated_at = NOW()
-        WHERE id = ?
-      `;
-
-            const [result] = await connection.execute(sql, params);
-            return { affected: result.affectedRows };
+            // 返回更新后的用户信息
+            return await this.getUserById(userId);
         } catch (error) {
-            console.error('更新用户信息错误:', error);
+            // 回滚事务
+            if (conn) {
+                await conn.rollback();
+            }
             throw error;
+        } finally {
+            // 释放连接
+            if (conn) {
+                conn.release();
+            }
         }
     }
 
-    async getUserById(id) {
+    async deleteUser(userId) {
+        let conn;
         try {
-            const [users] = await connection.execute(
-                'SELECT id, username, nickname, avatar_url FROM users WHERE id = ?',
-                [id]
-            );
+            // 获取连接
+            conn = await connection.getConnection();
+            
+            // 开启事务
+            await conn.beginTransaction();
 
-            return users[0];
+            // 由于设置了外键CASCADE，删除用户时会自动删除相关的profile记录
+            const sql = 'DELETE FROM users WHERE id = ?';
+            const [result] = await conn.execute(sql, [userId]);
+
+            // 提交事务
+            await conn.commit();
+            return result;
         } catch (error) {
-            console.error('获取用户信息错误:', error);
+            // 回滚事务
+            if (conn) {
+                await conn.rollback();
+            }
             throw error;
+        } finally {
+            // 释放连接
+            if (conn) {
+                conn.release();
+            }
         }
+    }
+
+    async getUserById(userId) {
+        const sql = `
+            SELECT 
+                u.*,
+                up.bio,
+                up.qq,
+                up.wechat,
+                up.github,
+                up.website,
+                up.location,
+                up.occupation,
+                up.company
+            FROM users u
+            LEFT JOIN user_profiles up ON u.id = up.user_id
+            WHERE u.id = ?
+        `;
+        const [rows] = await connection.execute(sql, [userId]);
+        if (rows.length > 0) {
+            const user = rows[0];
+            delete user.password; // 删除敏感信息
+            return user;
+        }
+        return null;
     }
 }
 

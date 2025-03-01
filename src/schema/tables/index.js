@@ -2,6 +2,7 @@
  * 数据库表结构定义索引
  */
 const users = require('./users');
+const userProfiles = require('./user_profiles');
 const articles = require('./articles');
 const categories = require('./categories'); // 分类表
 const tags = require('./tags'); // 标签表
@@ -17,6 +18,7 @@ const comments = require('./comments'); // 添加评论表
 
 module.exports = {
     users,
+    user_profiles: userProfiles,  // 添加用户详情表
     categories, // 先创建分类表
     tags, // 再创建标签表
     articles, // 然后是文章表（依赖用户表和分类表）
