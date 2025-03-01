@@ -154,6 +154,29 @@ class ArticleController {
             handeleErrorReturnMessage(ctx, error.message);
         }
     }
+
+    // 获取当前用户的文章列表
+    async getUserArticles(ctx) {
+        try {
+            const { id: userId } = ctx.userinfo;
+            const { page = 1, pageSize = 10 } = ctx.request.body;
+
+            // 计算偏移量
+            const offset = (parseInt(page) - 1) * parseInt(pageSize);
+            const limit = parseInt(pageSize);
+
+            const result = await articleService.getUserArticles(userId, offset, limit);
+
+            handeleSuccessReturnMessage(ctx, '获取成功', {
+                articles: result.articles,
+                total: result.total,
+                page: parseInt(page),
+                pageSize: parseInt(pageSize)
+            });
+        } catch (error) {
+            handeleErrorReturnMessage(ctx, '获取文章列表失败: ' + error.message);
+        }
+    }
 }
 
 module.exports = new ArticleController();

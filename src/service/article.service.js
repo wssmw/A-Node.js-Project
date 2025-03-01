@@ -189,6 +189,66 @@ class ArticleService {
             throw error;
         }
     }
+
+    // 获取用户的所有文章
+    async getUserArticles(userId, offset = 0, limit = 10) {
+        try {
+            // 确保参数是数字类型
+            const safeLimit = parseInt(limit);
+            const safeOffset = parseInt(offset);
+            const safeUserId = parseInt(userId);
+
+            // 获取文章列表
+            const statement = `
+                SELECT 
+                    a.id,
+                    a.title,
+                    a.summary,
+                    a.cover_url,
+                    a.created_at,
+                    a.updated_at,
+                    c.id as category_id,
+                    c.name as category_name,
+                    (SELECT COUNT(*) FROM comments WHERE article_id = a.id) as comment_count,
+                    (SELECT COUNT(*) FROM article_likes WHERE article_id = a.id) as like_count
+                FROM articles a
+                LEFT JOIN categories c ON a.category_id = c.id
+                WHERE a.user_id = ?
+                ORDER BY a.created_at DESC
+                LIMIT ${safeLimit} OFFSET ${safeOffset}
+            `;
+            
+            const [articles] = await connection.execute(statement, [safeUserId]);
+
+            // 获取每篇文章的标签
+            for (let article of articles) {
+                const tagStatement = `
+                    SELECT t.id, t.name
+                    FROM tags t
+                    INNER JOIN article_tags at ON t.id = at.tag_id
+                    WHERE at.article_id = ?
+                `;
+                const [tags] = await connection.execute(tagStatement, [article.id]);
+                article.tags = tags;
+            }
+
+            // 获取总数
+            const countStatement = `
+                SELECT COUNT(*) as total 
+                FROM articles 
+                WHERE user_id = ?
+            `;
+            const [countResult] = await connection.execute(countStatement, [safeUserId]);
+
+            return {
+                articles,
+                total: countResult[0].total
+            };
+        } catch (error) {
+            console.error('获取用户文章失败:', error);
+            throw error;
+        }
+    }
 }
 
 module.exports = new ArticleService();

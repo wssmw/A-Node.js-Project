@@ -98,6 +98,86 @@ class LikeController {
             handeleErrorReturnMessage(ctx, error.message);
         }
     }
+
+    // 点赞/取消点赞文章
+    async likeArticle(ctx) {
+        try {
+            const { id: userId } = ctx.userinfo;
+            const { articleId } = ctx.request.body;
+
+            if (!articleId) {
+                handeleErrorReturnMessage(ctx, '文章ID不能为空');
+                return;
+            }
+
+            const result = await likeService.likeArticle(userId, articleId);
+            handeleSuccessReturnMessage(ctx, 
+                result.action === 'like' ? '点赞成功' : '取消点赞成功'
+            );
+        } catch (error) {
+            handeleErrorReturnMessage(ctx, '操作失败: ' + error.message);
+        }
+    }
+
+    // 点赞/取消点赞评论
+    async likeComment(ctx) {
+        try {
+            const { id: userId } = ctx.userinfo;
+            const { commentId } = ctx.request.body;
+
+            if (!commentId) {
+                handeleErrorReturnMessage(ctx, '评论ID不能为空');
+                return;
+            }
+
+            const result = await likeService.likeComment(userId, commentId);
+            handeleSuccessReturnMessage(ctx, 
+                result.action === 'like' ? '点赞成功' : '取消点赞成功'
+            );
+        } catch (error) {
+            handeleErrorReturnMessage(ctx, '操作失败: ' + error.message);
+        }
+    }
+
+    // 获取用户点赞的文章列表
+    async getUserLikedArticles(ctx) {
+        try {
+            const { id: userId } = ctx.userinfo;
+            const { page = 1, pageSize = 10 } = ctx.request.body;
+
+            const offset = (parseInt(page) - 1) * parseInt(pageSize);
+            const result = await likeService.getUserLikedArticles(userId, offset, pageSize);
+
+            handeleSuccessReturnMessage(ctx, '获取成功', {
+                articles: result.articles,
+                total: result.total,
+                page: parseInt(page),
+                pageSize: parseInt(pageSize)
+            });
+        } catch (error) {
+            handeleErrorReturnMessage(ctx, '获取失败: ' + error.message);
+        }
+    }
+
+    // 获取用户点赞的评论列表
+    async getUserLikedComments(ctx) {
+        try {
+            const { id: userId } = ctx.userinfo;
+            const { page = 1, pageSize = 10 } = ctx.request.body;
+
+            const offset = (parseInt(page) - 1) * parseInt(pageSize);
+            const result = await likeService.getUserLikedComments(userId, offset, pageSize);
+
+            handeleSuccessReturnMessage(ctx, '获取成功', {
+                comments: result.comments,
+                total: result.total,
+                page: parseInt(page),
+                pageSize: parseInt(pageSize)
+            });
+        } catch (error) {
+            handeleErrorReturnMessage(ctx, '获取失败: ' + error.message);
+        }
+    }
 }
 
 module.exports = new LikeController();

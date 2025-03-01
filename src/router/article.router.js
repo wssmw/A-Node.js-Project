@@ -8,6 +8,7 @@ const {
     findById,
     find,
     uploadFile,
+    getUserArticles,
 } = require('../controller/article.controller');
 const { upload } = require('../middleware/file.middleware');
 
@@ -23,5 +24,8 @@ articleRouter.post('/getArticle', verifyAuthOptional, find);
 
 // 获取文章详情（可选登录）
 articleRouter.get('/getArticle/:id', verifyAuthOptional, findById);
+
+// 获取当前用户的文章列表（需要登录）
+articleRouter.post('/getUserArticles', verifyAuth, getUserArticles);
 
 module.exports = articleRouter;
