@@ -9,6 +9,8 @@ const {
     find,
     uploadFile,
     getUserArticles,
+    getHotArticles,
+    getLatestArticles,
 } = require('../controller/article.controller');
 const { upload } = require('../middleware/file.middleware');
 
@@ -27,5 +29,11 @@ articleRouter.get('/getArticle/:id', verifyAuthOptional, findById);
 
 // 获取当前用户的文章列表（需要登录）
 articleRouter.post('/getUserArticles', verifyAuth, getUserArticles);
+
+// 获取热门文章
+articleRouter.post('/getHotArticles', getHotArticles);
+
+// 获取最新文章
+articleRouter.post('/getLatestArticles', getLatestArticles);
 
 module.exports = articleRouter;

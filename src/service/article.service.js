@@ -290,6 +290,83 @@ class ArticleService {
             throw error;
         }
     }
+
+    // 获取热门文章
+    async getHotArticles(limit = 10, days = 7) {
+        try {
+            // 确保参数是数字类型
+            const safeLimit = parseInt(limit);
+            const safeDays = parseInt(days);
+
+            const statement = `
+                SELECT 
+                    a.id,
+                    a.title,
+                    (
+                        (SELECT COUNT(*) FROM article_views av 
+                         WHERE av.article_id = a.id 
+                         AND av.created_at > DATE_SUB(NOW(), INTERVAL ${safeDays} DAY)
+                        ) * 1 + 
+                        (SELECT COUNT(*) FROM article_likes WHERE article_id = a.id) * 2 + 
+                        (SELECT COUNT(*) FROM collection_articles WHERE article_id = a.id) * 3
+                    ) as hot_score
+                FROM articles a
+                ORDER BY hot_score DESC
+                LIMIT ${safeLimit}
+            `;
+
+            const [articles] = await connection.execute(statement, []);
+            return articles;
+        } catch (error) {
+            console.error('获取热门文章失败:', error);
+            throw error;
+        }
+    }
+
+    // 获取最新文章
+    async getLatestArticles(limit = 10) {
+        try {
+            // 确保参数是数字类型
+            const safeLimit = parseInt(limit);
+
+            const statement = `
+                SELECT 
+                    a.*,
+                    u.username as author_name,
+                    u.nickname as author_nickname,
+                    c.name as category_name,
+                    (SELECT COUNT(*) FROM comments WHERE article_id = a.id) as comment_count,
+                    (SELECT COUNT(*) FROM article_likes WHERE article_id = a.id) as like_count,
+                    (SELECT COUNT(*) FROM collection_articles WHERE article_id = a.id) as collection_count,
+                    (SELECT COUNT(*) FROM article_views WHERE article_id = a.id) as view_count,
+                    (SELECT COUNT(DISTINCT ip) FROM article_views WHERE article_id = a.id) as unique_view_count
+                FROM articles a
+                LEFT JOIN users u ON a.user_id = u.id
+                LEFT JOIN categories c ON a.category_id = c.id
+                ORDER BY a.created_at DESC
+                LIMIT ${safeLimit}
+            `;
+
+            const [articles] = await connection.execute(statement, []);
+
+            // 获取每篇文章的标签
+            for (let article of articles) {
+                const tagStatement = `
+                    SELECT t.id, t.name
+                    FROM tags t
+                    INNER JOIN article_tags at ON t.id = at.tag_id
+                    WHERE at.article_id = ?
+                `;
+                const [tags] = await connection.execute(tagStatement, [article.id]);
+                article.tags = tags;
+            }
+
+            return articles;
+        } catch (error) {
+            console.error('获取最新文章失败:', error);
+            throw error;
+        }
+    }
 }
 
 module.exports = new ArticleService();

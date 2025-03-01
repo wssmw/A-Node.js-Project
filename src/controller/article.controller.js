@@ -179,6 +179,39 @@ class ArticleController {
             handeleErrorReturnMessage(ctx, '获取文章列表失败: ' + error.message);
         }
     }
+
+    // 获取热门文章
+    async getHotArticles(ctx) {
+        try {
+            const { limit = 10, days = 7 } = ctx.request.body;
+            
+            // 限制最大返回数量和时间范围
+            const safeLimit = Math.min(parseInt(limit), 50);
+            const safeDays = Math.min(parseInt(days), 30);
+
+            const articles = await articleService.getHotArticles(safeLimit, safeDays);
+            
+            handeleSuccessReturnMessage(ctx, '获取成功', { articles });
+        } catch (error) {
+            handeleErrorReturnMessage(ctx, '获取热门文章失败: ' + error.message);
+        }
+    }
+
+    // 获取最新文章
+    async getLatestArticles(ctx) {
+        try {
+            const { limit = 10 } = ctx.request.body;
+            
+            // 限制最大返回数量
+            const safeLimit = Math.min(parseInt(limit), 50);
+
+            const articles = await articleService.getLatestArticles(safeLimit);
+            
+            handeleSuccessReturnMessage(ctx, '获取成功', { articles });
+        } catch (error) {
+            handeleErrorReturnMessage(ctx, '获取最新文章失败: ' + error.message);
+        }
+    }
 }
 
 module.exports = new ArticleController();
