@@ -5,23 +5,31 @@ const errType = require('../app/err.message');
 const service = require('../service/user.service');
 
 const md5password = require('../utils/passwordhandle');
-const GITEE_AUTH_URL = 'https://gitee.com/oauth/authorize';
-const CLIENT_ID =
-    '345c224984e879d914da13cd4dd4b92cdbf217722342f2bfc46db724ca7ad681';
-const CLIENT_SECRET =
-    '9ae0cc711853df7e0b6441e2926c0bd3513dd6df57be5e79174a9ffb9da8868b';
-
-const GITEE_OWNER = 'wangsaiqimengwen';
-const GITEE_REPO = 'blog-project';
-const SHA = 'dev';
-const GITEE_ACCESS_TOKEN = 'bbdde2639307d5a01b1ca366d27132c8';
 
 const REDIRECTURL = 'http://localhost:8000';
 const { PRIVATE_KEY, PUBLIC_KEY } = require('../app/config');
 const { default: axios } = require('axios');
 const { handeleSuccessReturnMessage } = require('../utils');
-const { SERVER_HOST, SERVER_PORT } = process.env;
-
+const {
+    SERVER_HOST,
+    SERVER_PORT,
+    GITEE_AUTH_URL,
+    CLIENT_ID,
+    CLIENT_SECRET,
+    GITEE_OWNER,
+    GITEE_REPO,
+    SHA,
+    GITEE_ACCESS_TOKEN,
+} = process.env;
+console.log(
+    GITEE_AUTH_URL,
+    CLIENT_ID,
+    CLIENT_SECRET,
+    GITEE_OWNER,
+    GITEE_REPO,
+    SHA,
+    GITEE_ACCESS_TOKEN
+);
 const verifyLogin = async (ctx, next) => {
     // 1.拿到用户名和密码
     const { username, password } = ctx.request.body;
