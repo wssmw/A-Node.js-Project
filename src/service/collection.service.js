@@ -1,14 +1,22 @@
 const connection = require('../app/database');
+const { generateEntityId } = require('../utils/idGenerator');
 
 class CollectionService {
     // 创建收藏夹
     async createCollection(userId, name, description = null, isPublic = true) {
+        const id = generateEntityId();
         const statement = `
-            INSERT INTO collections (user_id, name, description, is_public)
-            VALUES (?, ?, ?, ?)
+            INSERT INTO collections (id, user_id, name, description, is_public)
+            VALUES (?, ?, ?, ?, ?)
         `;
-        const [result] = await connection.execute(statement, [userId, name, description, isPublic]);
-        return result;
+        const [result] = await connection.execute(statement, [
+            id,
+            userId,
+            name,
+            description,
+            isPublic,
+        ]);
+        return { ...result, id };
     }
 
     // 更新收藏夹
@@ -43,7 +51,10 @@ class CollectionService {
             DELETE FROM collections 
             WHERE id = ? AND user_id = ?
         `;
-        const [result] = await connection.execute(statement, [collectionId, userId]);
+        const [result] = await connection.execute(statement, [
+            collectionId,
+            userId,
+        ]);
         return result;
     }
 
@@ -90,31 +101,26 @@ class CollectionService {
             LEFT JOIN users u ON c.user_id = u.id
             WHERE c.id = ? AND (c.is_public = true OR c.user_id = ?)
         `;
-        const [collections] = await connection.execute(statement, [collectionId, userId]);
+        const [collections] = await connection.execute(statement, [
+            collectionId,
+            userId,
+        ]);
         return collections[0];
     }
 
     // 添加文章到收藏夹
-    async addArticleToCollection(collectionId, articleId, userId) {
-        // 检查收藏夹权限
-        const collection = await this.getCollectionById(collectionId, userId);
-        if (!collection || collection.user_id !== userId) {
-            throw new Error('没有权限操作此收藏夹');
-        }
-
-        try {
-            const statement = `
-                INSERT INTO collection_articles (collection_id, article_id)
-                VALUES (?, ?)
-            `;
-            const [result] = await connection.execute(statement, [collectionId, articleId]);
-            return result;
-        } catch (error) {
-            if (error.code === 'ER_DUP_ENTRY') {
-                throw new Error('文章已在收藏夹中');
-            }
-            throw error;
-        }
+    async addArticleToCollection(collectionId, articleId) {
+        const id = generateEntityId();
+        const statement = `
+            INSERT INTO collection_articles (id, collection_id, article_id)
+            VALUES (?, ?, ?)
+        `;
+        const [result] = await connection.execute(statement, [
+            id,
+            collectionId,
+            articleId,
+        ]);
+        return { ...result, id };
     }
 
     // 从收藏夹移除文章
@@ -129,12 +135,20 @@ class CollectionService {
             DELETE FROM collection_articles 
             WHERE collection_id = ? AND article_id = ?
         `;
-        const [result] = await connection.execute(statement, [collectionId, articleId]);
+        const [result] = await connection.execute(statement, [
+            collectionId,
+            articleId,
+        ]);
         return result;
     }
 
     // 获取收藏夹中的文章列表
-    async getCollectionArticles(collectionId, userId = null, offset = 0, limit = 10) {
+    async getCollectionArticles(
+        collectionId,
+        userId = null,
+        offset = 0,
+        limit = 10
+    ) {
         try {
             // 确保参数是数字类型
             const safeCollectionId = parseInt(collectionId);
@@ -142,7 +156,10 @@ class CollectionService {
             const safeOffset = parseInt(offset);
 
             // 检查访问权限
-            const collection = await this.getCollectionById(safeCollectionId, userId);
+            const collection = await this.getCollectionById(
+                safeCollectionId,
+                userId
+            );
             if (!collection) {
                 throw new Error('收藏夹不存在或无权访问');
             }
@@ -164,8 +181,10 @@ class CollectionService {
                 ORDER BY ca.created_at DESC
                 LIMIT ${safeLimit} OFFSET ${safeOffset}
             `;
-            
-            const [articles] = await connection.execute(statement, [safeCollectionId]);
+
+            const [articles] = await connection.execute(statement, [
+                safeCollectionId,
+            ]);
 
             // 获取每篇文章的标签
             for (let article of articles) {
@@ -175,7 +194,9 @@ class CollectionService {
                     INNER JOIN article_tags at ON t.id = at.tag_id
                     WHERE at.article_id = ?
                 `;
-                const [tags] = await connection.execute(tagStatement, [article.id]);
+                const [tags] = await connection.execute(tagStatement, [
+                    article.id,
+                ]);
                 article.tags = tags;
             }
 
@@ -185,11 +206,13 @@ class CollectionService {
                 FROM collection_articles 
                 WHERE collection_id = ?
             `;
-            const [countResult] = await connection.execute(countStatement, [safeCollectionId]);
+            const [countResult] = await connection.execute(countStatement, [
+                safeCollectionId,
+            ]);
 
             return {
                 articles,
-                total: countResult[0].total
+                total: countResult[0].total,
             };
         } catch (error) {
             console.error('获取收藏夹文章失败:', error);
@@ -198,4 +221,4 @@ class CollectionService {
     }
 }
 
-module.exports = new CollectionService(); 
+module.exports = new CollectionService();

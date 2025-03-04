@@ -2,7 +2,7 @@
  * 用户表结构定义
  */
 const users = {
-    id: 'INT PRIMARY KEY AUTO_INCREMENT',
+    id: 'VARCHAR(12) PRIMARY KEY COMMENT "12位随机字符串ID"',
     username: 'VARCHAR(30) NOT NULL UNIQUE COMMENT "账号"',
     password: 'VARCHAR(255) NOT NULL COMMENT "密码"',
     nickname: 'VARCHAR(30) DEFAULT NULL COMMENT "昵称，如果为空则使用username"',

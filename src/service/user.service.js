@@ -1,26 +1,32 @@
 const connection = require('../app/database');
 const { SERVER_HOST, SERVER_PORT } = process.env;
 const md5password = require('../utils/passwordhandle');
+const { generateUserId } = require('../utils/idGenerator');
 
 class UserService {
     async create(user) {
-        // 解构用户数据，设置默认值
         const {
             username,
             password = md5password(md5password('123456')),
-            nickname = username, // 如果没有提供昵称，使用用户名
-            avatar_url = `http://${SERVER_HOST}:${SERVER_PORT}/uploads/avatar/defaultAvatar.png`, // 如果没有提供头像，使用默认头像
+            nickname = username,
+            avatar_url = `http://${SERVER_HOST}:${SERVER_PORT}/uploads/avatar/defaultAvatar.png`,
         } = user;
-        const statement = `INSERT INTO users (username, password, nickname, avatar_url) VALUES (?, ?, ?, ?);`;
+
+        const id = generateUserId(); // 生成唯一的12位用户ID
+        const statement = `
+            INSERT INTO users (id, username, password, nickname, avatar_url) 
+            VALUES (?, ?, ?, ?, ?)
+        `;
 
         try {
             const [result] = await connection.execute(statement, [
+                id,
                 username,
                 password,
                 nickname,
                 avatar_url,
             ]);
-            return result;
+            return { ...result, id };
         } catch (error) {
             console.error('创建用户错误:', error);
             throw error;
@@ -52,7 +58,7 @@ class UserService {
         try {
             // 获取连接
             conn = await connection.getConnection();
-            
+
             // 开启事务
             await conn.beginTransaction();
 
@@ -60,7 +66,7 @@ class UserService {
             const userFields = ['nickname', 'avatar_url', 'email', 'phone'];
             const userUpdates = [];
             const userValues = [];
-            
+
             userFields.forEach(field => {
                 if (userInfo[field] !== undefined) {
                     userUpdates.push(`${field} = ?`);
@@ -79,7 +85,16 @@ class UserService {
             }
 
             // 更新user_profiles表
-            const profileFields = ['bio', 'qq', 'wechat', 'github', 'website', 'location', 'occupation', 'company'];
+            const profileFields = [
+                'bio',
+                'qq',
+                'wechat',
+                'github',
+                'website',
+                'location',
+                'occupation',
+                'company',
+            ];
             const profileUpdates = [];
             const profileValues = [];
 
@@ -108,7 +123,12 @@ class UserService {
                     await conn.execute(profileSql, profileValues);
                 } else {
                     // 创建新记录
-                    const fields = ['user_id', ...profileFields.filter(field => userInfo[field] !== undefined)];
+                    const fields = [
+                        'user_id',
+                        ...profileFields.filter(
+                            field => userInfo[field] !== undefined
+                        ),
+                    ];
                     const values = [userId, ...profileValues];
                     const profileSql = `
                         INSERT INTO user_profiles (${fields.join(', ')})
@@ -142,7 +162,7 @@ class UserService {
         try {
             // 获取连接
             conn = await connection.getConnection();
-            
+
             // 开启事务
             await conn.beginTransaction();
 

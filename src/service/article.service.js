@@ -1,4 +1,5 @@
 const connection = require('../app/database');
+const { generateEntityId } = require('../utils/idGenerator');
 
 class ArticleService {
     async createArticle(articleData) {
@@ -12,50 +13,42 @@ class ArticleService {
             cover_url = null,
         } = articleData;
 
-        // 获取连接
+        const id = generateEntityId(); // 生成6位随机ID
         const connection = await require('../app/database').getConnection();
 
         try {
-            // 开启事务
             await connection.beginTransaction();
 
             // 1. 创建文章
-            const [articleResult] = await connection.execute(
+            await connection.execute(
                 `
-        INSERT INTO articles 
-        (title, content, summary, cover_url, category_id, user_id) 
-        VALUES (?, ?, ?, ?, ?, ?)
-      `,
-                [title, content, summary, cover_url, category, userId]
+                INSERT INTO articles 
+                (id, title, content, summary, cover_url, category_id, user_id) 
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+                `,
+                [id, title, content, summary, cover_url, category, userId]
             );
 
-            const articleId = articleResult.insertId;
-            console.log(articleId, 'articleId');
             // 2. 创建文章-标签关联
             if (Array.isArray(tags) && tags.length > 0) {
                 for (const tagId of tags) {
-                    console.log(tagId, 'tagId');
                     await connection.execute(
                         `
-            INSERT INTO article_tags (article_id, tag_id) 
-            VALUES (?, ?)
-          `,
-                        [articleId, tagId]
+                        INSERT INTO article_tags (article_id, tag_id) 
+                        VALUES (?, ?)
+                        `,
+                        [id, tagId]
                     );
                 }
             }
 
-            // 提交事务
             await connection.commit();
-
-            return articleResult;
+            return { id };
         } catch (error) {
-            // 如果出错，回滚事务
             await connection.rollback();
             console.error('创建文章错误:', error);
             throw error;
         } finally {
-            // 释放连接
             connection.release();
         }
     }
@@ -86,7 +79,7 @@ class ArticleService {
                 LEFT JOIN categories c ON a.category_id = c.id
                 WHERE a.id = ?
             `;
-            
+
             const params = userId ? [userId, userId, id] : [id];
             const [articles] = await connection.execute(statement, params);
 
@@ -130,14 +123,17 @@ class ArticleService {
             }
 
             if (keyword) {
-                whereConditions.push('(a.title LIKE ? OR a.content LIKE ? OR a.summary LIKE ?)');
+                whereConditions.push(
+                    '(a.title LIKE ? OR a.content LIKE ? OR a.summary LIKE ?)'
+                );
                 const likeKeyword = `%${keyword}%`;
                 params.push(likeKeyword, likeKeyword, likeKeyword);
             }
 
-            const whereClause = whereConditions.length > 0 
-                ? `WHERE ${whereConditions.join(' AND ')}` 
-                : '';
+            const whereClause =
+                whereConditions.length > 0
+                    ? `WHERE ${whereConditions.join(' AND ')}`
+                    : '';
 
             // 查询文章列表
             const statement = `
@@ -176,7 +172,9 @@ class ArticleService {
                     INNER JOIN article_tags at ON t.id = at.tag_id
                     WHERE at.article_id = ?
                 `;
-                const [tags] = await connection.execute(tagStatement, [article.id]);
+                const [tags] = await connection.execute(tagStatement, [
+                    article.id,
+                ]);
                 article.tags = tags;
             }
 
@@ -186,7 +184,8 @@ class ArticleService {
                 FROM articles a 
                 ${whereClause}
             `;
-            const [countResult] = await connection.execute(countStatement, 
+            const [countResult] = await connection.execute(
+                countStatement,
                 whereConditions.length > 0 ? params.slice(userId ? 2 : 0) : []
             );
 
@@ -227,8 +226,10 @@ class ArticleService {
                 ORDER BY a.created_at DESC
                 LIMIT ${safeLimit} OFFSET ${safeOffset}
             `;
-            
-            const [articles] = await connection.execute(statement, [safeUserId]);
+
+            const [articles] = await connection.execute(statement, [
+                safeUserId,
+            ]);
 
             // 获取每篇文章的标签
             for (let article of articles) {
@@ -238,7 +239,9 @@ class ArticleService {
                     INNER JOIN article_tags at ON t.id = at.tag_id
                     WHERE at.article_id = ?
                 `;
-                const [tags] = await connection.execute(tagStatement, [article.id]);
+                const [tags] = await connection.execute(tagStatement, [
+                    article.id,
+                ]);
                 article.tags = tags;
             }
 
@@ -248,11 +251,13 @@ class ArticleService {
                 FROM articles 
                 WHERE user_id = ?
             `;
-            const [countResult] = await connection.execute(countStatement, [safeUserId]);
+            const [countResult] = await connection.execute(countStatement, [
+                safeUserId,
+            ]);
 
             return {
                 articles,
-                total: countResult[0].total
+                total: countResult[0].total,
             };
         } catch (error) {
             console.error('获取用户文章失败:', error);
@@ -273,9 +278,14 @@ class ArticleService {
                 ${userId ? 'AND user_id = ?' : ''}
                 LIMIT 1
             `;
-            
-            const checkParams = userId ? [articleId, ip, userId] : [articleId, ip];
-            const [existingViews] = await connection.execute(checkStatement, checkParams);
+
+            const checkParams = userId
+                ? [articleId, ip, userId]
+                : [articleId, ip];
+            const [existingViews] = await connection.execute(
+                checkStatement,
+                checkParams
+            );
 
             // 如果2小时内没有浏览记录，才记录新的浏览
             if (existingViews.length === 0) {
@@ -283,7 +293,12 @@ class ArticleService {
                     INSERT INTO article_views (article_id, user_id, ip, user_agent)
                     VALUES (?, ?, ?, ?)
                 `;
-                await connection.execute(insertStatement, [articleId, userId, ip, userAgent]);
+                await connection.execute(insertStatement, [
+                    articleId,
+                    userId,
+                    ip,
+                    userAgent,
+                ]);
             }
         } catch (error) {
             console.error('记录文章浏览失败:', error);
@@ -357,7 +372,9 @@ class ArticleService {
                     INNER JOIN article_tags at ON t.id = at.tag_id
                     WHERE at.article_id = ?
                 `;
-                const [tags] = await connection.execute(tagStatement, [article.id]);
+                const [tags] = await connection.execute(tagStatement, [
+                    article.id,
+                ]);
                 article.tags = tags;
             }
 

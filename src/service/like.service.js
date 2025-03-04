@@ -1,5 +1,6 @@
 const connection = require('../app/database');
 const notificationService = require('./notification.service');
+const { generateEntityId } = require('../utils/idGenerator');
 
 class LikeService {
     // 文章点赞
@@ -11,11 +12,12 @@ class LikeService {
 
             try {
                 // 1. 添加点赞记录
+                const id = generateEntityId();
                 const statement = `
-                    INSERT INTO article_likes (user_id, article_id)
-                    VALUES (?, ?)
+                    INSERT INTO article_likes (id, article_id, user_id)
+                    VALUES (?, ?, ?)
                 `;
-                await connection.execute(statement, [userId, articleId]);
+                await connection.execute(statement, [id, articleId, userId]);
 
                 // 2. 获取文章作者ID
                 const [article] = await connection.execute(
@@ -26,16 +28,16 @@ class LikeService {
                 // 3. 创建通知
                 if (article[0] && article[0].user_id !== userId) {
                     await notificationService.createNotification({
-                        userId: article[0].user_id,      // 通知发送给文章作者
-                        fromUserId: userId,              // 点赞的用户
+                        userId: article[0].user_id, // 通知发送给文章作者
+                        fromUserId: userId, // 点赞的用户
                         type: 'like_article',
                         content: `赞了你的文章《${article[0].title}》`,
-                        targetId: articleId
+                        targetId: articleId,
                     });
                 }
 
                 await connection.commit();
-                return { action: 'like' };
+                return { ...result, id };
             } catch (error) {
                 await connection.rollback();
                 throw error;
@@ -88,19 +90,23 @@ class LikeService {
 
             try {
                 // 1. 添加点赞记录
+                const id = generateEntityId();
                 const statement = `
-                    INSERT INTO comment_likes (user_id, comment_id) 
-                    VALUES (?, ?)
+                    INSERT INTO comment_likes (id, comment_id, user_id) 
+                    VALUES (?, ?, ?)
                 `;
-                await connection.execute(statement, [userId, commentId]);
+                await connection.execute(statement, [id, commentId, userId]);
 
                 // 2. 获取评论信息和文章信息
-                const [comment] = await connection.execute(`
+                const [comment] = await connection.execute(
+                    `
                     SELECT c.user_id, c.content, a.id as article_id, a.title 
                     FROM comments c
                     JOIN articles a ON c.article_id = a.id
                     WHERE c.id = ?
-                `, [commentId]);
+                `,
+                    [commentId]
+                );
 
                 // 3. 创建通知
                 if (comment[0] && comment[0].user_id !== userId) {
@@ -109,12 +115,12 @@ class LikeService {
                         fromUserId: userId,
                         type: 'like_comment',
                         content: `赞了你在《${comment[0].title}》中的评论`,
-                        targetId: comment[0].article_id
+                        targetId: comment[0].article_id,
                     });
                 }
 
                 await connection.commit();
-                return { action: 'like' };
+                return { ...result, id };
             } catch (error) {
                 await connection.rollback();
                 throw error;
@@ -206,7 +212,7 @@ class LikeService {
                 ORDER BY al.created_at DESC
                 LIMIT ${parseInt(limit)} OFFSET ${parseInt(offset)}
             `;
-            
+
             const [articles] = await connection.execute(statement, [userId]);
 
             // 获取每篇文章的标签
@@ -217,7 +223,9 @@ class LikeService {
                     INNER JOIN article_tags at ON t.id = at.tag_id
                     WHERE at.article_id = ?
                 `;
-                const [tags] = await connection.execute(tagStatement, [article.id]);
+                const [tags] = await connection.execute(tagStatement, [
+                    article.id,
+                ]);
                 article.tags = tags;
             }
 
@@ -227,11 +235,13 @@ class LikeService {
                 FROM article_likes 
                 WHERE user_id = ?
             `;
-            const [countResult] = await connection.execute(countStatement, [userId]);
+            const [countResult] = await connection.execute(countStatement, [
+                userId,
+            ]);
 
             return {
                 articles,
-                total: countResult[0].total
+                total: countResult[0].total,
             };
         } catch (error) {
             console.error('获取用户点赞文章失败:', error);
@@ -263,7 +273,7 @@ class LikeService {
                 ORDER BY cl.created_at DESC
                 LIMIT ${parseInt(limit)} OFFSET ${parseInt(offset)}
             `;
-            
+
             const [comments] = await connection.execute(statement, [userId]);
 
             // 获取总数
@@ -272,11 +282,13 @@ class LikeService {
                 FROM comment_likes 
                 WHERE user_id = ?
             `;
-            const [countResult] = await connection.execute(countStatement, [userId]);
+            const [countResult] = await connection.execute(countStatement, [
+                userId,
+            ]);
 
             return {
                 comments,
-                total: countResult[0].total
+                total: countResult[0].total,
             };
         } catch (error) {
             console.error('获取用户点赞评论失败:', error);

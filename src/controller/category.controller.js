@@ -1,5 +1,8 @@
 const categoryService = require('../service/category.service');
-const { handeleErrorReturnMessage, handeleSuccessReturnMessage } = require('../utils');
+const {
+    handeleErrorReturnMessage,
+    handeleSuccessReturnMessage,
+} = require('../utils');
 
 class CategoryController {
     // 创建分类
@@ -18,7 +21,7 @@ class CategoryController {
             handeleErrorReturnMessage(ctx, '分类名已存在', 409);
             return;
         }
-
+        console.log('name', name);
         // 创建分类
         const result = await categoryService.create(name);
         handeleSuccessReturnMessage(ctx, '创建成功', result);
@@ -61,7 +64,7 @@ class CategoryController {
         const result = await categoryService.getList();
         handeleSuccessReturnMessage(ctx, '获取成功', {
             categories: result.categories,
-            total: result.total
+            total: result.total,
         });
     }
 
@@ -69,16 +72,16 @@ class CategoryController {
     async getCategoryById(ctx) {
         const { categoryId } = ctx.request.body;
         const category = await categoryService.getById(categoryId);
-        
+
         if (!category) {
             handeleErrorReturnMessage(ctx, '分类不存在', 404);
             return;
         }
 
         handeleSuccessReturnMessage(ctx, '获取成功', {
-            category
+            category,
         });
     }
 }
 
-module.exports = new CategoryController(); 
+module.exports = new CategoryController();

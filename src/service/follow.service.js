@@ -1,15 +1,17 @@
 const connection = require('../app/database');
+const { generateEntityId } = require('../utils/idGenerator');
 
 class FollowService {
     // 关注用户
     async followUser(followerId, followingId) {
         try {
+            const id = generateEntityId();
             const statement = `
-                INSERT INTO user_follows (follower_id, following_id)
-                VALUES (?, ?)
+                INSERT INTO user_follows (id, follower_id, following_id)
+                VALUES (?, ?, ?)
             `;
-            await connection.execute(statement, [followerId, followingId]);
-            return { action: 'follow' };
+            await connection.execute(statement, [id, followerId, followingId]);
+            return { action: 'follow', id };
         } catch (error) {
             if (error.code === 'ER_DUP_ENTRY') {
                 // 如果已经关注，则取消关注
@@ -17,7 +19,10 @@ class FollowService {
                     DELETE FROM user_follows 
                     WHERE follower_id = ? AND following_id = ?
                 `;
-                await connection.execute(unfollowStatement, [followerId, followingId]);
+                await connection.execute(unfollowStatement, [
+                    followerId,
+                    followingId,
+                ]);
                 return { action: 'unfollow' };
             }
             throw error;
@@ -27,12 +32,13 @@ class FollowService {
     // 关注标签
     async followTag(userId, tagId) {
         try {
+            const id = generateEntityId();
             const statement = `
-                INSERT INTO tag_follows (user_id, tag_id)
-                VALUES (?, ?)
+                INSERT INTO tag_follows (id, user_id, tag_id)
+                VALUES (?, ?, ?)
             `;
-            await connection.execute(statement, [userId, tagId]);
-            return { action: 'follow' };
+            await connection.execute(statement, [id, userId, tagId]);
+            return { action: 'follow', id };
         } catch (error) {
             if (error.code === 'ER_DUP_ENTRY') {
                 // 如果已经关注，则取消关注
@@ -103,7 +109,10 @@ class FollowService {
                 ORDER BY tf.created_at DESC
                 LIMIT ${safeLimit} OFFSET ${safeOffset}
             `;
-            const [tags] = await connection.execute(statement, [userId, userId]);
+            const [tags] = await connection.execute(statement, [
+                userId,
+                userId,
+            ]);
             return tags;
         } catch (error) {
             console.error('获取关注标签列表失败:', error);
@@ -118,7 +127,10 @@ class FollowService {
             FROM user_follows 
             WHERE follower_id = ? AND following_id = ?
         `;
-        const [result] = await connection.execute(statement, [followerId, followingId]);
+        const [result] = await connection.execute(statement, [
+            followerId,
+            followingId,
+        ]);
         return result[0].count > 0;
     }
 
@@ -134,4 +146,4 @@ class FollowService {
     }
 }
 
-module.exports = new FollowService(); 
+module.exports = new FollowService();

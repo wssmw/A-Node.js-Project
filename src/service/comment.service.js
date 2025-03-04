@@ -1,77 +1,27 @@
 const connection = require('../app/database');
 const notificationService = require('./notification.service');
+const { generateEntityId } = require('../utils/idGenerator');
 
 class CommentService {
     // 创建评论
     async create(userId, articleId, content, parentId = null) {
-        try {
-            // 开始事务
-            const connection = await require('../app/database').getConnection();
-            await connection.beginTransaction();
+        const id = generateEntityId();
 
-            try {
-                // 1. 创建评论
-                const statement = `
-                    INSERT INTO comments (content, user_id, article_id, parent_id)
-                    VALUES (?, ?, ?, ?)
-                `;
-                const [result] = await connection.execute(statement, [
-                    content, userId, articleId, parentId
-                ]);
+        const statement = `
+            INSERT INTO comments 
+            (id, user_id, article_id, content, parent_id) 
+            VALUES (?, ?, ?, ?, ?)
+        `;
 
-                // 2. 获取文章作者ID和标题
-                const [article] = await connection.execute(
-                    'SELECT user_id, title FROM articles WHERE id = ?',
-                    [articleId]
-                );
+        const [result] = await connection.execute(statement, [
+            id,
+            userId,
+            articleId,
+            content,
+            parentId,
+        ]);
 
-                // 3. 如果是回复评论，获取被回复的评论作者ID
-                let parentUserId = null;
-                if (parentId) {
-                    const [parentComment] = await connection.execute(
-                        'SELECT user_id FROM comments WHERE id = ?',
-                        [parentId]
-                    );
-                    if (parentComment[0]) {
-                        parentUserId = parentComment[0].user_id;
-                    }
-                }
-
-                // 4. 创建通知
-                // 4.1 通知文章作者（如果评论者不是作者自己）
-                if (article[0] && article[0].user_id !== userId) {
-                    await notificationService.createNotification({
-                        userId: article[0].user_id,
-                        fromUserId: userId,
-                        type: 'comment_article',
-                        content: `评论了你的文章《${article[0].title}》`,
-                        targetId: articleId
-                    });
-                }
-
-                // 4.2 如果是回复评论，通知被回复的人（如果回复者不是被回复者自己）
-                if (parentUserId && parentUserId !== userId) {
-                    await notificationService.createNotification({
-                        userId: parentUserId,
-                        fromUserId: userId,
-                        type: 'reply_comment',
-                        content: `回复了你在《${article[0].title}》中的评论`,
-                        targetId: articleId
-                    });
-                }
-
-                await connection.commit();
-                return result;
-            } catch (error) {
-                await connection.rollback();
-                throw error;
-            } finally {
-                connection.release();
-            }
-        } catch (error) {
-            console.error('创建评论失败:', error);
-            throw error;
-        }
+        return { ...result, id };
     }
 
     // 删除评论
@@ -301,6 +251,24 @@ class CommentService {
         }
 
         return null;
+    }
+
+    async createCommentLike(commentId, userId) {
+        const id = generateEntityId();
+
+        const statement = `
+            INSERT INTO comment_likes 
+            (id, comment_id, user_id) 
+            VALUES (?, ?, ?)
+        `;
+
+        const [result] = await connection.execute(statement, [
+            id,
+            commentId,
+            userId,
+        ]);
+
+        return { ...result, id };
     }
 }
 

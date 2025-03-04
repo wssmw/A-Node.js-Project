@@ -27,6 +27,7 @@ async function safeDeleteFile(filePath) {
 
 class ArticleController {
     async create(ctx) {
+        console.log('create', ctx);
         try {
             const { title, content, summary, tags, category, cover_url } =
                 ctx.request.body;
@@ -87,7 +88,7 @@ class ArticleController {
             // 获取第一个文件
             const file = files[0];
             handeleSuccessReturnMessage(ctx, '上传成功', {
-                url: getFileUrl(file.path)
+                url: getFileUrl(file.path),
             });
         } catch (error) {
             // 如果出错，删除已上传的文件
@@ -102,12 +103,17 @@ class ArticleController {
         try {
             const { id } = ctx.params;
             const userId = ctx.userinfo ? ctx.userinfo.id : null;
-            
+
             // 获取访问者信息
             const ip = ctx.ip;
             const userAgent = ctx.headers['user-agent'];
             console.log('ip', ip, 'userAgent', userAgent);
-            const article = await articleService.findArticleById(id, userId, ip, userAgent);
+            const article = await articleService.findArticleById(
+                id,
+                userId,
+                ip,
+                userAgent
+            );
 
             if (!article) {
                 handeleErrorReturnMessage(ctx, '文章不存在', 404);
@@ -167,16 +173,23 @@ class ArticleController {
             const offset = (parseInt(page) - 1) * parseInt(pageSize);
             const limit = parseInt(pageSize);
 
-            const result = await articleService.getUserArticles(userId, offset, limit);
+            const result = await articleService.getUserArticles(
+                userId,
+                offset,
+                limit
+            );
 
             handeleSuccessReturnMessage(ctx, '获取成功', {
                 articles: result.articles,
                 total: result.total,
                 page: parseInt(page),
-                pageSize: parseInt(pageSize)
+                pageSize: parseInt(pageSize),
             });
         } catch (error) {
-            handeleErrorReturnMessage(ctx, '获取文章列表失败: ' + error.message);
+            handeleErrorReturnMessage(
+                ctx,
+                '获取文章列表失败: ' + error.message
+            );
         }
     }
 
@@ -184,16 +197,22 @@ class ArticleController {
     async getHotArticles(ctx) {
         try {
             const { limit = 10, days = 7 } = ctx.request.body;
-            
+
             // 限制最大返回数量和时间范围
             const safeLimit = Math.min(parseInt(limit), 50);
             const safeDays = Math.min(parseInt(days), 30);
 
-            const articles = await articleService.getHotArticles(safeLimit, safeDays);
-            
+            const articles = await articleService.getHotArticles(
+                safeLimit,
+                safeDays
+            );
+
             handeleSuccessReturnMessage(ctx, '获取成功', { articles });
         } catch (error) {
-            handeleErrorReturnMessage(ctx, '获取热门文章失败: ' + error.message);
+            handeleErrorReturnMessage(
+                ctx,
+                '获取热门文章失败: ' + error.message
+            );
         }
     }
 
@@ -201,15 +220,18 @@ class ArticleController {
     async getLatestArticles(ctx) {
         try {
             const { limit = 10 } = ctx.request.body;
-            
+
             // 限制最大返回数量
             const safeLimit = Math.min(parseInt(limit), 50);
 
             const articles = await articleService.getLatestArticles(safeLimit);
-            
+
             handeleSuccessReturnMessage(ctx, '获取成功', { articles });
         } catch (error) {
-            handeleErrorReturnMessage(ctx, '获取最新文章失败: ' + error.message);
+            handeleErrorReturnMessage(
+                ctx,
+                '获取最新文章失败: ' + error.message
+            );
         }
     }
 }

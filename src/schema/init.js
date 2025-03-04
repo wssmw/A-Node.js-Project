@@ -29,12 +29,15 @@ async function checkTableExists(tableName) {
  * @param {string} tableName 表名
  */
 async function getTableColumns(tableName) {
-    const [columns] = await connection.execute(`
+    const [columns] = await connection.execute(
+        `
         SELECT COLUMN_NAME, COLUMN_TYPE, IS_NULLABLE, COLUMN_DEFAULT, EXTRA
         FROM INFORMATION_SCHEMA.COLUMNS
         WHERE TABLE_SCHEMA = DATABASE()
         AND TABLE_NAME = ?
-    `, [tableName]);
+    `,
+        [tableName]
+    );
     return columns;
 }
 
@@ -46,7 +49,7 @@ async function getTableColumns(tableName) {
 async function checkTableNeedsUpdate(tableName) {
     const currentColumns = await getTableColumns(tableName);
     const fields = TABLES[tableName];
-    
+
     // 将当前列转换为Set以便快速查找
     const currentColumnSet = new Set(
         currentColumns.map(col => col.COLUMN_NAME.toLowerCase())
@@ -54,8 +57,12 @@ async function checkTableNeedsUpdate(tableName) {
 
     // 检查是否有新字段需要添加
     for (const fieldName of Object.keys(fields)) {
-        if (fieldName === 'FOREIGN KEY' || fieldName === 'FOREIGN KEY ' || 
-            fieldName === 'FOREIGN KEY  ' || fieldName === 'UNIQUE KEY') {
+        if (
+            fieldName === 'FOREIGN KEY' ||
+            fieldName === 'FOREIGN KEY ' ||
+            fieldName === 'FOREIGN KEY  ' ||
+            fieldName === 'UNIQUE KEY'
+        ) {
             continue;
         }
         if (!currentColumnSet.has(fieldName.toLowerCase())) {
@@ -74,7 +81,7 @@ async function updateTable(tableName) {
     try {
         const fields = TABLES[tableName];
         const currentColumns = await getTableColumns(tableName);
-        
+
         // 将当前列转换为Map以便快速查找
         const currentColumnMap = new Map(
             currentColumns.map(col => [col.COLUMN_NAME.toLowerCase(), col])
@@ -83,8 +90,12 @@ async function updateTable(tableName) {
         // 处理新增和修改的字段
         for (const [fieldName, definition] of Object.entries(fields)) {
             // 跳过特殊键
-            if (fieldName === 'FOREIGN KEY' || fieldName === 'FOREIGN KEY ' || 
-                fieldName === 'FOREIGN KEY  ' || fieldName === 'UNIQUE KEY') {
+            if (
+                fieldName === 'FOREIGN KEY' ||
+                fieldName === 'FOREIGN KEY ' ||
+                fieldName === 'FOREIGN KEY  ' ||
+                fieldName === 'UNIQUE KEY'
+            ) {
                 continue;
             }
 
@@ -149,22 +160,28 @@ function generateCreateTableSQL(tableName, fields) {
  */
 async function initDatabase() {
     try {
+        // 按照依赖关系排序的表创建顺序
         const tableOrder = [
-            'users',
-            'user_profiles',  // 添加用户详情表
-            'categories',
-            'tags',
-            'articles',
-            'article_tags',
-            'comments',
-            'article_likes',
-            'comment_likes',
-            'collections',
-            'collection_articles',
-            'article_views',
-            'user_follows',
-            'tag_follows',  
-            'notifications',
+            // 第一层：基础表（无外键依赖）
+            'users', // 用户表（最基础的表）
+            'categories', // 分类表（独立表）
+            'tags', // 标签表（独立表）
+
+            // 第二层：依赖单个基础表
+            'user_profiles', // 依赖 users
+            'collections', // 依赖 users
+            'articles', // 依赖 users, categories
+
+            // 第三层：依赖第二层表
+            'comments', // 依赖 users, articles
+            'article_tags', // 依赖 articles, tags
+            'article_likes', // 依赖 articles, users
+            'comment_likes', // 依赖 comments, users
+            'collection_articles', // 依赖 collections, articles
+            'article_views', // 依赖 articles, users
+            'user_follows', // 依赖 users (self-reference)
+            'tag_follows', // 依赖 users, tags
+            'notifications', // 依赖 users
         ];
 
         for (const tableName of tableOrder) {

@@ -1,4 +1,5 @@
 const connection = require('../app/database');
+const { generateEntityId } = require('../utils/idGenerator');
 
 class NotificationService {
     // 创建通知
@@ -6,21 +7,28 @@ class NotificationService {
         console.log('createNotification', data);
         try {
             const {
-                userId,      // 接收通知的用户
+                userId, // 接收通知的用户
                 fromUserId, // 触发通知的用户
-                type,       // 通知类型
-                content,    // 通知内容
-                targetId    // 相关的目标ID
+                type, // 通知类型
+                content, // 通知内容
+                targetId, // 相关的目标ID
             } = data;
+
+            const id = generateEntityId();
 
             const statement = `
                 INSERT INTO notifications 
-                (user_id, from_user_id, type, content, target_id)
-                VALUES (?, ?, ?, ?, ?)
+                (id, user_id, from_user_id, type, content, target_id)
+                VALUES (?, ?, ?, ?, ?, ?)
             `;
-            
+
             const [result] = await connection.execute(statement, [
-                userId, fromUserId, type, content, targetId
+                id,
+                userId,
+                fromUserId,
+                type,
+                content,
+                targetId,
             ]);
 
             if (!result.insertId) {
@@ -28,7 +36,7 @@ class NotificationService {
                 throw new Error('通知创建失败');
             }
 
-            return result;
+            return { ...result, id };
         } catch (error) {
             console.error('创建通知失败:', error);
             throw error;
@@ -75,4 +83,4 @@ class NotificationService {
     }
 }
 
-module.exports = new NotificationService(); 
+module.exports = new NotificationService();
