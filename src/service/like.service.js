@@ -37,7 +37,7 @@ class LikeService {
                 }
 
                 await connection.commit();
-                return { ...result, id };
+                return { action: 'like' };
             } catch (error) {
                 await connection.rollback();
                 throw error;
@@ -120,7 +120,7 @@ class LikeService {
                 }
 
                 await connection.commit();
-                return { ...result, id };
+                return { action: 'like' };
             } catch (error) {
                 await connection.rollback();
                 throw error;

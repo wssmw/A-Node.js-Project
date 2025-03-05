@@ -32,12 +32,13 @@ class ArticleService {
             // 2. 创建文章-标签关联
             if (Array.isArray(tags) && tags.length > 0) {
                 for (const tagId of tags) {
+                    const articleTagId = generateEntityId(); // 生成6位随机ID
                     await connection.execute(
                         `
-                        INSERT INTO article_tags (article_id, tag_id) 
-                        VALUES (?, ?)
+                        INSERT INTO article_tags (id,article_id, tag_id) 
+                        VALUES (?, ?, ?)
                         `,
-                        [id, tagId]
+                        [articleTagId, id, tagId]
                     );
                 }
             }
