@@ -290,11 +290,14 @@ class ArticleService {
 
             // 如果2小时内没有浏览记录，才记录新的浏览
             if (existingViews.length === 0) {
+                const id = generateEntityId();
+
                 const insertStatement = `
-                    INSERT INTO article_views (article_id, user_id, ip, user_agent)
-                    VALUES (?, ?, ?, ?)
+                    INSERT INTO article_views (id,article_id, user_id, ip, user_agent)
+                    VALUES (?,?, ?, ?, ?)
                 `;
                 await connection.execute(insertStatement, [
+                    id,
                     articleId,
                     userId,
                     ip,
