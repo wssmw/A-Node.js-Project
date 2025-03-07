@@ -105,7 +105,15 @@ class ArticleController {
             const userId = ctx.userinfo ? ctx.userinfo.id : null;
 
             // 获取访问者信息
-            const ip = ctx.ip;
+            let ip = ctx.ip;
+            // 如果是 IPv6 格式，提取 IPv4 部分
+            if (ip.includes('::ffff:')) {
+                ip = ip.split('::ffff:')[1];
+            }
+            // 如果是代理 IP，取最后一个
+            if (ip.includes(',')) {
+                ip = ip.split(',')[0].trim();
+            }
             const userAgent = ctx.headers['user-agent'];
             console.log('ip', ip, 'userAgent', userAgent);
             const article = await articleService.findArticleById(

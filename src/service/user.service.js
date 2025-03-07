@@ -211,6 +211,67 @@ class UserService {
         }
         return null;
     }
+
+    // 获取用户信息
+    async getUserInfo(userId) {
+        try {
+            const statement = `
+                SELECT 
+                    u.*,
+                    up.bio,
+                    up.qq,
+                    up.wechat,
+                    up.github,
+                    up.website,
+                    up.location,
+                    up.occupation,
+                    up.company,
+                    (SELECT COUNT(*) FROM articles WHERE user_id = u.id) as article_count,
+                    (SELECT COUNT(*) FROM user_follows WHERE follower_id = u.id) as following_count,
+                    (SELECT COUNT(*) FROM user_follows WHERE following_id = u.id) as follower_count,
+                    (SELECT COUNT(*) FROM article_likes WHERE user_id = u.id) as like_count,
+                    (SELECT COUNT(*) FROM article_views av 
+                     JOIN articles a ON av.article_id = a.id 
+                     WHERE a.user_id = u.id) as total_views,
+                    (SELECT COUNT(DISTINCT av.ip) FROM article_views av 
+                     JOIN articles a ON av.article_id = a.id 
+                     WHERE a.user_id = u.id) as unique_views,
+                    (SELECT COUNT(*) FROM comments WHERE user_id = u.id) as comment_count,
+                    (SELECT COUNT(*) FROM collection_articles ca 
+                     JOIN collections c ON ca.collection_id = c.id 
+                     WHERE c.user_id = u.id) as collection_count,
+                    (SELECT COUNT(*) FROM article_likes al 
+                     JOIN articles a ON al.article_id = a.id 
+                     WHERE a.user_id = u.id) as received_likes,
+                    (SELECT COUNT(*) FROM comments c 
+                     JOIN articles a ON c.article_id = a.id 
+                     WHERE a.user_id = u.id) as received_comments
+                FROM users u
+                LEFT JOIN user_profiles up ON u.id = up.user_id
+                WHERE u.id = ?
+            `;
+            const [users] = await connection.execute(statement, [userId]);
+
+            if (users.length === 0) {
+                return null;
+            }
+
+            const user = users[0];
+
+            // 计算一些额外的统计信息
+            user.total_interactions =
+                user.received_likes + user.received_comments;
+            user.engagement_rate =
+                user.article_count > 0
+                    ? (user.total_interactions / user.article_count).toFixed(2)
+                    : 0;
+
+            return user;
+        } catch (error) {
+            console.error('获取用户信息失败:', error);
+            throw error;
+        }
+    }
 }
 
 module.exports = new UserService();

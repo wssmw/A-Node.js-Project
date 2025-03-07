@@ -206,7 +206,7 @@ class ArticleService {
             // 确保参数是数字类型
             const safeLimit = parseInt(limit);
             const safeOffset = parseInt(offset);
-            const safeUserId = userId
+            const safeUserId = userId;
 
             // 获取文章列表
             const statement = `
@@ -228,7 +228,7 @@ class ArticleService {
                 ORDER BY a.created_at DESC
                 LIMIT ${safeLimit} OFFSET ${safeOffset}
             `;
-            console.log(safeUserId,'safeUserId')
+            console.log(safeUserId, 'safeUserId');
             const [articles] = await connection.execute(statement, [
                 safeUserId,
             ]);
@@ -270,7 +270,13 @@ class ArticleService {
     // 记录文章浏览
     async recordView(articleId, userId, ip, userAgent) {
         try {
-            // 检查最近2小时内是否已经浏览过
+            // 确保 IP 地址格式正确
+            if (!ip || typeof ip !== 'string') {
+                console.warn('Invalid IP address:', ip);
+                return;
+            }
+
+            // 检查最近24小时内是否已经浏览过
             const checkStatement = `
                 SELECT id 
                 FROM article_views 
@@ -289,25 +295,26 @@ class ArticleService {
                 checkParams
             );
 
-            // 如果2小时内没有浏览记录，才记录新的浏览
+            // 如果24小时内没有浏览记录，才记录新的浏览
             if (existingViews.length === 0) {
                 const id = generateEntityId();
 
                 const insertStatement = `
-                    INSERT INTO article_views (id,article_id, user_id, ip, user_agent)
-                    VALUES (?,?, ?, ?, ?)
+                    INSERT INTO article_views (id, article_id, user_id, ip, user_agent)
+                    VALUES (?, ?, ?, ?, ?)
                 `;
                 await connection.execute(insertStatement, [
                     id,
                     articleId,
                     userId,
                     ip,
-                    userAgent,
+                    userAgent ? userAgent.substring(0, 500) : null, // 确保 user_agent 不超过数据库字段长度
                 ]);
             }
         } catch (error) {
             console.error('记录文章浏览失败:', error);
-            throw error;
+            // 不抛出错误，避免影响文章访问
+            console.error(error);
         }
     }
 

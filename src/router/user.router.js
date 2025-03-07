@@ -3,10 +3,15 @@ const {
     verifyAuth,
     getCommitMessage,
 } = require('../middleware/login.middleware');
-const { create, updateUserAvatar, updateUserInfo, deleteUser } = require('../controller/user.controller');
+const {
+    create,
+    updateUserAvatar,
+    updateUserInfo,
+    deleteUser,
+    getUserInfo,
+} = require('../controller/user.controller');
 const { verifyUser, handlePassword } = require('../middleware/user.middleware');
 const { upload } = require('../middleware/file.middleware');
-
 
 const userRouter = new Router({ prefix: '/users' });
 
@@ -14,7 +19,7 @@ userRouter.post('/register', verifyUser, handlePassword, create);
 
 // 更新用户头像
 userRouter.post(
-    '/updateUserAvatar', 
+    '/updateUserAvatar',
     verifyAuth,
     upload.any(),
     updateUserAvatar
@@ -22,6 +27,9 @@ userRouter.post(
 
 // 更新用户信息
 userRouter.post('/updateUserInfo', verifyAuth, updateUserInfo);
+
+// 获取用户信息
+userRouter.get('/:id', getUserInfo);
 
 // 删除用户
 userRouter.post('/deleteUser', verifyAuth, deleteUser);
