@@ -7,31 +7,34 @@ const {
 class CommentController {
     // 创建评论
     async create(ctx) {
-        const { articleId, content, parentId } = ctx.request.body;
-        const { id: userId } = ctx.userinfo;
-        console.log('id>>>', userId);
-        // 验证评论内容
-        if (!content || content.trim().length === 0) {
-            handeleErrorReturnMessage(ctx, '评论内容不能为空');
-            return;
+        try {
+            const { content, articleId, parentId } = ctx.request.body;
+            const { id: userId } = ctx.userinfo;
+            console.log('id>>>', userId);
+            // 验证评论内容
+            if (!content || content.trim().length === 0) {
+                return handeleErrorReturnMessage(ctx, '评论内容不能为空');
+            }
+
+            const result = await commentService.create(
+                userId,
+                articleId,
+                content,
+                parentId
+            );
+
+            // 如果是回复评论，获取完整的评论信息
+            let commentInfo = null;
+            if (result.insertId) {
+                commentInfo = await commentService.getById(result.insertId);
+            }
+
+            handeleSuccessReturnMessage(ctx, '评论成功', {
+                comment: commentInfo,
+            });
+        } catch (error) {
+            handeleErrorReturnMessage(ctx, error.message);
         }
-
-        const result = await commentService.create(
-            userId,
-            articleId,
-            content,
-            parentId
-        );
-
-        // 如果是回复评论，获取完整的评论信息
-        let commentInfo = null;
-        if (result.insertId) {
-            commentInfo = await commentService.getById(result.insertId);
-        }
-
-        handeleSuccessReturnMessage(ctx, '评论成功', {
-            comment: commentInfo,
-        });
     }
 
     // 删除评论

@@ -28,7 +28,7 @@ articleRouter.post('/getArticle', verifyAuthOptional, find);
 articleRouter.get('/getArticle/:id', verifyAuthOptional, findById);
 
 // 获取当前用户的文章列表（需要登录）
-articleRouter.post('/getUserArticles', verifyAuth, getUserArticles);
+articleRouter.post('/getUserArticles', getUserArticles);
 
 // 获取热门文章
 articleRouter.post('/getHotArticles', getHotArticles);

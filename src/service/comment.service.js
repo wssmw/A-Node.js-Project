@@ -5,6 +5,17 @@ const { generateEntityId } = require('../utils/idGenerator');
 class CommentService {
     // 创建评论
     async create(userId, articleId, content, parentId = null) {
+        // 如果有父评论ID，先验证父评论是否存在
+        if (parentId) {
+            const [parent] = await connection.execute(
+                'SELECT id FROM comments WHERE id = ?',
+                [parentId]
+            );
+            if (parent.length === 0) {
+                throw new Error('父评论不存在');
+            }
+        }
+
         const id = generateEntityId();
 
         const statement = `

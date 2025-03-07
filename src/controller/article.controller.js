@@ -166,8 +166,7 @@ class ArticleController {
     // 获取当前用户的文章列表
     async getUserArticles(ctx) {
         try {
-            const { id: userId } = ctx.userinfo;
-            const { page = 1, pageSize = 10 } = ctx.request.body;
+            const { page = 1, pageSize = 10, userId } = ctx.request.body;
 
             // 计算偏移量
             const offset = (parseInt(page) - 1) * parseInt(pageSize);

@@ -206,7 +206,7 @@ class ArticleService {
             // 确保参数是数字类型
             const safeLimit = parseInt(limit);
             const safeOffset = parseInt(offset);
-            const safeUserId = parseInt(userId);
+            const safeUserId = userId
 
             // 获取文章列表
             const statement = `
@@ -217,6 +217,7 @@ class ArticleService {
                     a.cover_url,
                     a.created_at,
                     a.updated_at,
+                    a.user_id,
                     c.id as category_id,
                     c.name as category_name,
                     (SELECT COUNT(*) FROM comments WHERE article_id = a.id) as comment_count,
@@ -227,11 +228,11 @@ class ArticleService {
                 ORDER BY a.created_at DESC
                 LIMIT ${safeLimit} OFFSET ${safeOffset}
             `;
-
+            console.log(safeUserId,'safeUserId')
             const [articles] = await connection.execute(statement, [
                 safeUserId,
             ]);
-
+            console.log('articles', articles);
             // 获取每篇文章的标签
             for (let article of articles) {
                 const tagStatement = `

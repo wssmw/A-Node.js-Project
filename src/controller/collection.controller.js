@@ -1,5 +1,8 @@
 const collectionService = require('../service/collection.service');
-const { handeleSuccessReturnMessage, handeleErrorReturnMessage } = require('../utils');
+const {
+    handeleSuccessReturnMessage,
+    handeleErrorReturnMessage,
+} = require('../utils');
 
 class CollectionController {
     // 创建收藏夹
@@ -20,7 +23,9 @@ class CollectionController {
                 isPublic
             );
 
-            handeleSuccessReturnMessage(ctx, '创建成功', { id: result.insertId });
+            handeleSuccessReturnMessage(ctx, '创建成功', {
+                id: result.insertId,
+            });
         } catch (error) {
             handeleErrorReturnMessage(ctx, '创建失败: ' + error.message);
         }
@@ -37,9 +42,16 @@ class CollectionController {
                 return;
             }
 
-            const result = await collectionService.updateCollection(collectionId, userId, updates);
+            const result = await collectionService.updateCollection(
+                collectionId,
+                userId,
+                updates
+            );
             if (!result || result.affectedRows === 0) {
-                handeleErrorReturnMessage(ctx, '更新失败，可能没有权限或收藏夹不存在');
+                handeleErrorReturnMessage(
+                    ctx,
+                    '更新失败，可能没有权限或收藏夹不存在'
+                );
                 return;
             }
 
@@ -60,9 +72,15 @@ class CollectionController {
                 return;
             }
 
-            const result = await collectionService.deleteCollection(collectionId, userId);
+            const result = await collectionService.deleteCollection(
+                collectionId,
+                userId
+            );
             if (result.affectedRows === 0) {
-                handeleErrorReturnMessage(ctx, '删除失败，可能没有权限或收藏夹不存在');
+                handeleErrorReturnMessage(
+                    ctx,
+                    '删除失败，可能没有权限或收藏夹不存在'
+                );
                 return;
             }
 
@@ -76,8 +94,9 @@ class CollectionController {
     async getUserCollections(ctx) {
         try {
             const { id: userId } = ctx.userinfo;
-            const collections = await collectionService.getUserCollections(userId);
-            
+            const collections =
+                await collectionService.getUserCollections(userId);
+
             handeleSuccessReturnMessage(ctx, '获取成功', { collections });
         } catch (error) {
             handeleErrorReturnMessage(ctx, '获取失败: ' + error.message);
@@ -95,7 +114,11 @@ class CollectionController {
                 return;
             }
 
-            await collectionService.addArticleToCollection(collectionId, articleId, userId);
+            await collectionService.addArticleToCollection(
+                collectionId,
+                articleId,
+                userId
+            );
             handeleSuccessReturnMessage(ctx, '收藏成功');
         } catch (error) {
             handeleErrorReturnMessage(ctx, '收藏失败: ' + error.message);
@@ -113,7 +136,11 @@ class CollectionController {
                 return;
             }
 
-            await collectionService.removeArticleFromCollection(collectionId, articleId, userId);
+            await collectionService.removeArticleFromCollection(
+                collectionId,
+                articleId,
+                userId
+            );
             handeleSuccessReturnMessage(ctx, '移除成功');
         } catch (error) {
             handeleErrorReturnMessage(ctx, '移除失败: ' + error.message);
@@ -143,7 +170,7 @@ class CollectionController {
                 articles: result.articles,
                 total: result.total,
                 page: parseInt(page),
-                pageSize: parseInt(pageSize)
+                pageSize: parseInt(pageSize),
             });
         } catch (error) {
             handeleErrorReturnMessage(ctx, '获取失败: ' + error.message);
@@ -154,8 +181,9 @@ class CollectionController {
     async getCurrentUserCollections(ctx) {
         try {
             const { id: userId } = ctx.userinfo;
-            const collections = await collectionService.getCurrentUserCollections(userId);
-            
+            const collections =
+                await collectionService.getCurrentUserCollections(userId);
+
             handeleSuccessReturnMessage(ctx, '获取成功', { collections });
         } catch (error) {
             handeleErrorReturnMessage(ctx, '获取失败: ' + error.message);
@@ -163,16 +191,22 @@ class CollectionController {
     }
 
     // 获取其他用户的收藏夹列表
-    async getOtherUserCollections(ctx) {
+    async getUserCollections(ctx) {
         try {
             const { userId } = ctx.request.body;
-
+            console.log(ctx.userinfo);
             if (!userId) {
                 handeleErrorReturnMessage(ctx, '用户ID不能为空');
                 return;
             }
-
-            const collections = await collectionService.getOtherUserCollections(userId);
+            let collections;
+            if (ctx.userinfo.id === userId) {
+                collections =
+                    await collectionService.getCurrentUserCollections(userId);
+            } else {
+                collections =
+                    await collectionService.getOtherUserCollections(userId);
+            }
             handeleSuccessReturnMessage(ctx, '获取成功', { collections });
         } catch (error) {
             handeleErrorReturnMessage(ctx, '获取失败: ' + error.message);
@@ -180,4 +214,4 @@ class CollectionController {
     }
 }
 
-module.exports = new CollectionController(); 
+module.exports = new CollectionController();

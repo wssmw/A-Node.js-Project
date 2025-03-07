@@ -4,8 +4,7 @@ const {
     createCollection,
     updateCollection,
     deleteCollection,
-    getCurrentUserCollections,
-    getOtherUserCollections,
+    getUserCollections,
     addArticleToCollection,
     removeArticleFromCollection,
     getCollectionArticles
@@ -23,10 +22,10 @@ collectionRouter.post('/update', verifyAuth, updateCollection);
 collectionRouter.post('/delete', verifyAuth, deleteCollection);
 
 // 获取当前用户的收藏夹列表（需要登录）
-collectionRouter.get('/getCurrentUserCollections', verifyAuth, getCurrentUserCollections);
+// collectionRouter.get('/getCurrentUserCollections', verifyAuth, getCurrentUserCollections);
 
 // 获取其他用户的收藏夹列表（不需要登录）
-collectionRouter.post('/getOtherUserCollections', getOtherUserCollections);
+collectionRouter.post('/getUserCollections', verifyAuthOptional,getUserCollections);
 
 // 添加文章到收藏夹
 collectionRouter.post('/addArticle', verifyAuth, addArticleToCollection);
