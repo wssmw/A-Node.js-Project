@@ -1,7 +1,7 @@
 const connection = require('../app/database');
 const { SERVER_HOST, SERVER_PORT } = process.env;
 const md5password = require('../utils/passwordhandle');
-const { generateUserId } = require('../utils/idGenerator');
+const { generateUserId, generateEntityId } = require('../utils/idGenerator');
 
 class UserService {
     async create(user) {
@@ -124,12 +124,14 @@ class UserService {
                 } else {
                     // 创建新记录
                     const fields = [
+                        'id',
                         'user_id',
                         ...profileFields.filter(
                             field => userInfo[field] !== undefined
                         ),
                     ];
-                    const values = [userId, ...profileValues];
+                    const id = generateEntityId();
+                    const values = [id, userId, ...profileValues];
                     const profileSql = `
                         INSERT INTO user_profiles (${fields.join(', ')})
                         VALUES (${fields.map(() => '?').join(', ')})
