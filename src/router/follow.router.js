@@ -4,7 +4,7 @@ const {
     followUser,
     followTag,
     getFollowingUsers,
-    getFollowingTags
+    getFollowingTags,
 } = require('../controller/follow.controller');
 
 const followRouter = new Router({ prefix: '/follow' });
@@ -16,9 +16,9 @@ followRouter.post('/user', verifyAuth, followUser);
 followRouter.post('/tag', verifyAuth, followTag);
 
 // 获取关注的用户列表
-followRouter.post('/getFollowingUsers', verifyAuth, getFollowingUsers);
+followRouter.post('/getFollowingUsers', getFollowingUsers);
 
 // 获取关注的标签列表
-followRouter.post('/getFollowingTags', verifyAuth, getFollowingTags);
+followRouter.post('/getFollowingTags', getFollowingTags);
 
-module.exports = followRouter; 
+module.exports = followRouter;

@@ -1,5 +1,8 @@
 const followService = require('../service/follow.service');
-const { handeleSuccessReturnMessage, handeleErrorReturnMessage } = require('../utils');
+const {
+    handeleSuccessReturnMessage,
+    handeleErrorReturnMessage,
+} = require('../utils');
 
 class FollowController {
     // 关注/取消关注用户
@@ -18,8 +21,12 @@ class FollowController {
                 return;
             }
 
-            const result = await followService.followUser(followerId, followingId);
-            handeleSuccessReturnMessage(ctx, 
+            const result = await followService.followUser(
+                followerId,
+                followingId
+            );
+            handeleSuccessReturnMessage(
+                ctx,
                 result.action === 'follow' ? '关注成功' : '取消关注成功'
             );
         } catch (error) {
@@ -39,7 +46,8 @@ class FollowController {
             }
 
             const result = await followService.followTag(userId, tagId);
-            handeleSuccessReturnMessage(ctx, 
+            handeleSuccessReturnMessage(
+                ctx,
                 result.action === 'follow' ? '关注成功' : '取消关注成功'
             );
         } catch (error) {
@@ -50,11 +58,18 @@ class FollowController {
     // 获取关注的用户列表
     async getFollowingUsers(ctx) {
         try {
-            const { id: userId } = ctx.userinfo;
-            const { page = 1, pageSize = 10 } = ctx.request.body;
-
+            const { page = 1, pageSize = 10, userId } = ctx.request.body;
+            console.log(userId, 'userId');
+            if (!userId) {
+                console.log('这里纸吸管');
+                handeleErrorReturnMessage(ctx, '请传入用户ID:userId');
+            }
             const offset = (parseInt(page) - 1) * parseInt(pageSize);
-            const users = await followService.getFollowingUsers(userId, offset, parseInt(pageSize));
+            const users = await followService.getFollowingUsers(
+                userId,
+                offset,
+                parseInt(pageSize)
+            );
 
             handeleSuccessReturnMessage(ctx, '获取成功', { users });
         } catch (error) {
@@ -69,7 +84,11 @@ class FollowController {
             const { page = 1, pageSize = 10 } = ctx.request.body;
 
             const offset = (parseInt(page) - 1) * parseInt(pageSize);
-            const tags = await followService.getFollowingTags(userId, offset, parseInt(pageSize));
+            const tags = await followService.getFollowingTags(
+                userId,
+                offset,
+                parseInt(pageSize)
+            );
 
             handeleSuccessReturnMessage(ctx, '获取成功', { tags });
         } catch (error) {
@@ -78,4 +97,4 @@ class FollowController {
     }
 }
 
-module.exports = new FollowController(); 
+module.exports = new FollowController();
