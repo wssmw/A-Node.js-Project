@@ -80,9 +80,11 @@ class FollowController {
     // 获取关注的标签列表
     async getFollowingTags(ctx) {
         try {
-            const { id: userId } = ctx.userinfo;
-            const { page = 1, pageSize = 10 } = ctx.request.body;
-
+            const { page = 1, pageSize = 10, userId } = ctx.request.body;
+            if (!userId) {
+                console.log('这里纸吸管');
+                handeleErrorReturnMessage(ctx, '请传入用户ID:userId');
+            }
             const offset = (parseInt(page) - 1) * parseInt(pageSize);
             const tags = await followService.getFollowingTags(
                 userId,

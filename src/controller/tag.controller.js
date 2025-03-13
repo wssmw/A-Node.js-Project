@@ -4,14 +4,14 @@ const { handeleSuccessReturnMessage } = require('../utils');
 class TagController {
     // 创建标签
     async create(ctx) {
-        const { name } = ctx.request.body;
-        console.log('name',name)
+        const { name, svg_icon } = ctx.request.body;
+        console.log('name', name, 'svg_icon', svg_icon);
         // 验证标签名
         if (!name || name.trim().length === 0) {
             ctx.status = 400;
             ctx.body = {
                 code: 400,
-                message: '标签名不能为空'
+                message: '标签名不能为空',
             };
             return;
         }
@@ -22,17 +22,17 @@ class TagController {
             ctx.status = 409;
             ctx.body = {
                 code: 409,
-                message: '标签名已存在'
+                message: '标签名已存在',
             };
             return;
         }
 
         // 创建标签
-        const result = await tagService.create(name);
+        const result = await tagService.create(name, svg_icon);
         ctx.body = {
             code: 200,
             message: '创建成功',
-            data: result
+            data: result,
         };
     }
 
@@ -43,27 +43,28 @@ class TagController {
             await tagService.remove(tagId);
             ctx.body = {
                 code: 200,
-                message: '删除成功'
+                message: '删除成功',
             };
         } catch (error) {
             ctx.status = 400;
             ctx.body = {
                 code: 400,
-                message: error.message
+                message: error.message,
             };
         }
     }
 
     // 更新标签
     async update(ctx) {
-        const { name,tagId } = ctx.request.body;
-
+        const { name, tagId, svg_icon } = ctx.request.body;
+        console.log('name', name, 'tagId', tagId);
+        console.log('svg_icon', svg_icon);
         // 验证标签名
         if (!name || name.trim().length === 0) {
             ctx.status = 400;
             ctx.body = {
                 code: 400,
-                message: '标签名不能为空'
+                message: '标签名不能为空',
             };
             return;
         }
@@ -74,16 +75,17 @@ class TagController {
             ctx.status = 409;
             ctx.body = {
                 code: 409,
-                message: '标签名已存在'
+                message: '标签名已存在',
             };
             return;
         }
 
-        const result = await tagService.update(tagId, name);
+        const result = await tagService.update(tagId, name, svg_icon);
+        console.log('result', result);
         ctx.body = {
             code: 200,
             message: '更新成功',
-            data: result
+            data: result,
         };
     }
 
@@ -92,7 +94,7 @@ class TagController {
         const result = await tagService.getList();
         handeleSuccessReturnMessage(ctx, '获取成功', {
             tags: result.tags,
-            total: result.total
+            total: result.total,
         });
     }
 
@@ -100,21 +102,21 @@ class TagController {
     async getTagById(ctx) {
         const { tagId } = ctx.request.body;
         const tag = await tagService.getById(tagId);
-        
+
         if (!tag) {
             ctx.status = 404;
             ctx.body = {
                 code: 404,
-                message: '标签不存在'
+                message: '标签不存在',
             };
             return;
         }
 
         ctx.body = {
             code: 200,
-            data: tag
+            data: tag,
         };
     }
 }
 
-module.exports = new TagController(); 
+module.exports = new TagController();
