@@ -7,7 +7,7 @@ const {
 class CategoryController {
     // 创建分类
     async create(ctx) {
-        const { name } = ctx.request.body;
+        const { name, svg_icon } = ctx.request.body;
 
         // 验证分类名
         if (!name || name.trim().length === 0) {
@@ -21,9 +21,9 @@ class CategoryController {
             handeleErrorReturnMessage(ctx, '分类名已存在', 409);
             return;
         }
-        console.log('name', name);
+        console.log('name', name, 'svg_icon', svg_icon);
         // 创建分类
-        const result = await categoryService.create(name);
+        const result = await categoryService.create(name, svg_icon);
         handeleSuccessReturnMessage(ctx, '创建成功', result);
     }
 
@@ -40,7 +40,7 @@ class CategoryController {
 
     // 更新分类
     async update(ctx) {
-        const { categoryId, name } = ctx.request.body;
+        const { categoryId, name, svg_icon } = ctx.request.body;
 
         // 验证分类名
         if (!name || name.trim().length === 0) {
@@ -55,7 +55,15 @@ class CategoryController {
             return;
         }
 
-        const result = await categoryService.update(categoryId, name);
+        console.log(
+            'categoryId',
+            categoryId,
+            'name',
+            name,
+            'svg_icon',
+            svg_icon
+        );
+        const result = await categoryService.update(categoryId, name, svg_icon);
         handeleSuccessReturnMessage(ctx, '更新成功', result);
     }
 

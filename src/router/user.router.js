@@ -28,12 +28,11 @@ userRouter.post(
 // 更新用户信息
 userRouter.post('/updateUserInfo', verifyAuth, updateUserInfo);
 
-// 获取用户信息
-
 // 删除用户
 userRouter.post('/deleteUser', verifyAuth, deleteUser);
 userRouter.get('/getCommitMessage', getCommitMessage);
 
+// 获取用户信息
 userRouter.get('/:id', getUserInfo);
 
 module.exports = userRouter;
