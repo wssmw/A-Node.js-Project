@@ -91,7 +91,8 @@ class TagController {
 
     // 获取标签列表
     async getTagList(ctx) {
-        const result = await tagService.getList();
+        const currentUserId = ctx.userinfo ? ctx.userinfo.id : null;
+        const result = await tagService.getList(currentUserId);
         handeleSuccessReturnMessage(ctx, '获取成功', {
             tags: result.tags,
             total: result.total,
@@ -101,7 +102,8 @@ class TagController {
     // 获取单个标签
     async getTagById(ctx) {
         const { tagId } = ctx.request.body;
-        const tag = await tagService.getById(tagId);
+        const currentUserId = ctx.userinfo ? ctx.userinfo.id : null;
+        const tag = await tagService.getById(tagId, currentUserId);
 
         if (!tag) {
             ctx.status = 404;

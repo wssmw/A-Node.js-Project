@@ -60,14 +60,12 @@ class TagService {
                 t.svg_icon,
                 t.created_at, 
                 t.updated_at,
-                COUNT(at.article_id) as article_count,
-                COUNT(tf.id) as follower_count,
+                (SELECT COUNT(*) FROM article_tags WHERE tag_id = t.id) as article_count,
+                (SELECT COUNT(*) FROM tag_follows WHERE tag_id = t.id) as follower_count,
                 ${userId ? 'EXISTS(SELECT 1 FROM tag_follows WHERE tag_id = t.id AND user_id = ?) as has_followed' : 'FALSE as has_followed'},
-                (COUNT(at.article_id) * 1 + COUNT(tf.id) * 2) as hot_score
+                ((SELECT COUNT(*) FROM article_tags WHERE tag_id = t.id) + 
+                 (SELECT COUNT(*) FROM tag_follows WHERE tag_id = t.id) * 2) as hot_score
             FROM tags t
-            LEFT JOIN article_tags at ON t.id = at.tag_id
-            LEFT JOIN tag_follows tf ON t.id = tf.tag_id
-            GROUP BY t.id
             ORDER BY hot_score DESC, t.created_at DESC
         `;
 
@@ -75,6 +73,7 @@ class TagService {
             statement,
             userId ? [userId] : []
         );
+
         const countStatement = `SELECT COUNT(*) as total FROM tags`;
         const [countResult] = await connection.execute(countStatement);
 
@@ -93,15 +92,13 @@ class TagService {
                 t.svg_icon,
                 t.created_at, 
                 t.updated_at,
-                COUNT(at.article_id) as article_count,
-                COUNT(tf.id) as follower_count,
+                (SELECT COUNT(*) FROM article_tags WHERE tag_id = t.id) as article_count,
+                (SELECT COUNT(*) FROM tag_follows WHERE tag_id = t.id) as follower_count,
                 ${userId ? 'EXISTS(SELECT 1 FROM tag_follows WHERE tag_id = t.id AND user_id = ?) as has_followed' : 'FALSE as has_followed'},
-                (COUNT(at.article_id) * 1 + COUNT(tf.id) * 2) as hot_score
+                ((SELECT COUNT(*) FROM article_tags WHERE tag_id = t.id) + 
+                 (SELECT COUNT(*) FROM tag_follows WHERE tag_id = t.id) * 2) as hot_score
             FROM tags t
-            LEFT JOIN article_tags at ON t.id = at.tag_id
-            LEFT JOIN tag_follows tf ON t.id = tf.tag_id
             WHERE t.id = ?
-            GROUP BY t.id
         `;
 
         const params = userId ? [userId, tagId] : [tagId];
