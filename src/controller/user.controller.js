@@ -1,4 +1,5 @@
 const service = require('../service/user.service');
+const { safeDeleteFile } = require('../utils/fileUtils');
 const fs = require('fs').promises; // 使用 promises 版本的 fs
 const fsSync = require('fs');
 const path = require('path');
@@ -13,18 +14,18 @@ const { getFileUrl } = require('../middleware/file.middleware');
 const uploadDir = 'uploads/avatar';
 
 // 安全删除文件函数
-async function safeDeleteFile(filePath) {
-    try {
-        if (fsSync.existsSync(filePath)) {
-            await fs.unlink(filePath);
-            return true;
-        }
-        return false;
-    } catch (error) {
-        console.error('删除文件失败:', error);
-        return false;
-    }
-}
+// async function safeDeleteFile(filePath) {
+//     try {
+//         if (fsSync.existsSync(filePath)) {
+//             await fs.unlink(filePath);
+//             return true;
+//         }
+//         return false;
+//     } catch (error) {
+//         console.error('删除文件失败:', error);
+//         return false;
+//     }
+// }
 
 class UserController {
     async create(ctx, next) {

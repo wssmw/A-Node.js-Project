@@ -1,5 +1,7 @@
 const connection = require('../app/database');
 const { generateEntityId } = require('../utils/idGenerator');
+const path = require('path');
+const { safeDeleteFile } = require('../utils/fileUtils');
 
 class ArticleService {
     async createArticle(articleData) {
@@ -394,6 +396,92 @@ class ArticleService {
         } catch (error) {
             console.error('获取最新文章失败:', error);
             throw error;
+        }
+    }
+
+    // 删除文章
+    async deleteArticle(articleId, userId) {
+        const connection = await require('../app/database').getConnection();
+        try {
+            await connection.beginTransaction();
+
+            // 检查文章是否存在且属于该用户
+            const [article] = await connection.execute(
+                'SELECT id, cover_url FROM articles WHERE id = ? AND user_id = ?',
+                [articleId, userId]
+            );
+
+            if (article.length === 0) {
+                throw new Error('文章不存在或无权限删除');
+            }
+
+            // 删除文章相关的所有数据
+            // 1. 删除文章标签关联
+            await connection.execute(
+                'DELETE FROM article_tags WHERE article_id = ?',
+                [articleId]
+            );
+
+            // 2. 删除文章点赞记录
+            await connection.execute(
+                'DELETE FROM article_likes WHERE article_id = ?',
+                [articleId]
+            );
+
+            // 3. 删除文章的收藏记录
+            await connection.execute(
+                'DELETE FROM collection_articles WHERE article_id = ?',
+                [articleId]
+            );
+
+            // 4. 删除文章的浏览记录
+            await connection.execute(
+                'DELETE FROM article_views WHERE article_id = ?',
+                [articleId]
+            );
+
+            // 5. 删除文章的评论
+            await connection.execute(
+                'DELETE FROM comments WHERE article_id = ?',
+                [articleId]
+            );
+
+            // 6. 删除文章本身
+            const [result] = await connection.execute(
+                'DELETE FROM articles WHERE id = ?',
+                [articleId]
+            );
+
+            await connection.commit();
+
+            // 如果文章有封面图片且是本地存储的图片，则删除文件
+            if (article[0].cover_url) {
+                const { SERVER_HOST, SERVER_PORT } = process.env;
+                const serverUrl = `http://${SERVER_HOST}:${SERVER_PORT}`;
+
+                // 检查是否是本地存储的图片
+                if (article[0].cover_url.startsWith(serverUrl)) {
+                    // 从完整URL中提取相对路径
+                    const relativePath = article[0].cover_url.replace(
+                        serverUrl,
+                        ''
+                    );
+                    const coverPath = path.join(
+                        __dirname,
+                        '../../',
+                        relativePath
+                    );
+                    await safeDeleteFile(coverPath);
+                }
+            }
+
+            return result;
+        } catch (error) {
+            await connection.rollback();
+            console.error('删除文章失败:', error);
+            throw error;
+        } finally {
+            connection.release();
         }
     }
 }

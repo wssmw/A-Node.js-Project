@@ -241,6 +241,24 @@ class ArticleController {
             );
         }
     }
+
+    // 删除文章
+    async deleteArticle(ctx) {
+        try {
+            const { id: userId } = ctx.userinfo;
+            const { articleId } = ctx.request.body;
+
+            if (!articleId) {
+                handeleErrorReturnMessage(ctx, '文章ID不能为空');
+                return;
+            }
+
+            await articleService.deleteArticle(articleId, userId);
+            handeleSuccessReturnMessage(ctx, '删除成功');
+        } catch (error) {
+            handeleErrorReturnMessage(ctx, error.message);
+        }
+    }
 }
 
 module.exports = new ArticleController();
