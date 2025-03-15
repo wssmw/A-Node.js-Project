@@ -82,7 +82,6 @@ class FollowController {
         try {
             const { page = 1, pageSize = 10, userId } = ctx.request.body;
             if (!userId) {
-                console.log('这里纸吸管');
                 handeleErrorReturnMessage(ctx, '请传入用户ID:userId');
             }
             const offset = (parseInt(page) - 1) * parseInt(pageSize);
