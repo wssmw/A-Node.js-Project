@@ -1,6 +1,7 @@
 const Router = require('koa-router');
 const {
     verifyAuth,
+    verifyAuthOptional,
     getCommitMessage,
 } = require('../middleware/login.middleware');
 const {
@@ -15,6 +16,7 @@ const { upload } = require('../middleware/file.middleware');
 
 const userRouter = new Router({ prefix: '/users' });
 
+// 注册
 userRouter.post('/register', verifyUser, handlePassword, create);
 
 // 更新用户头像
@@ -28,12 +30,12 @@ userRouter.post(
 // 更新用户信息
 userRouter.post('/updateUserInfo', verifyAuth, updateUserInfo);
 
-// 获取用户信息
-
 // 删除用户
 userRouter.post('/deleteUser', verifyAuth, deleteUser);
-userRouter.get('/getCommitMessage', getCommitMessage);
 
-userRouter.get('/:id', getUserInfo);
+// 获取用户信息（可选登录）
+userRouter.get('/:id', verifyAuthOptional, getUserInfo);
+
+userRouter.get('/getCommitMessage', getCommitMessage);
 
 module.exports = userRouter;

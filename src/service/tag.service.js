@@ -52,8 +52,7 @@ class TagService {
     }
 
     // 获取标签列表
-    async getList() {
-        // 获取标签列表
+    async getList(userId = null) {
         const statement = `
             SELECT 
                 t.id, 
@@ -63,6 +62,7 @@ class TagService {
                 t.updated_at,
                 COUNT(at.article_id) as article_count,
                 COUNT(tf.id) as follower_count,
+                ${userId ? 'EXISTS(SELECT 1 FROM tag_follows WHERE tag_id = t.id AND user_id = ?) as has_followed' : 'FALSE as has_followed'},
                 (COUNT(at.article_id) * 1 + COUNT(tf.id) * 2) as hot_score
             FROM tags t
             LEFT JOIN article_tags at ON t.id = at.tag_id
@@ -70,9 +70,11 @@ class TagService {
             GROUP BY t.id
             ORDER BY hot_score DESC, t.created_at DESC
         `;
-        const [tags] = await connection.execute(statement);
 
-        // 获取总数
+        const [tags] = await connection.execute(
+            statement,
+            userId ? [userId] : []
+        );
         const countStatement = `SELECT COUNT(*) as total FROM tags`;
         const [countResult] = await connection.execute(countStatement);
 
@@ -83,16 +85,17 @@ class TagService {
     }
 
     // 获取单个标签
-    async getById(tagId) {
+    async getById(tagId, userId = null) {
         const statement = `
             SELECT 
                 t.id, 
-                t.name, 
+                t.name,
                 t.svg_icon,
                 t.created_at, 
                 t.updated_at,
                 COUNT(at.article_id) as article_count,
                 COUNT(tf.id) as follower_count,
+                ${userId ? 'EXISTS(SELECT 1 FROM tag_follows WHERE tag_id = t.id AND user_id = ?) as has_followed' : 'FALSE as has_followed'},
                 (COUNT(at.article_id) * 1 + COUNT(tf.id) * 2) as hot_score
             FROM tags t
             LEFT JOIN article_tags at ON t.id = at.tag_id
@@ -100,7 +103,9 @@ class TagService {
             WHERE t.id = ?
             GROUP BY t.id
         `;
-        const [result] = await connection.execute(statement, [tagId]);
+
+        const params = userId ? [userId, tagId] : [tagId];
+        const [result] = await connection.execute(statement, params);
         return result[0];
     }
 
