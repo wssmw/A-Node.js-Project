@@ -38,10 +38,7 @@ userRouter.get('/:id', verifyAuthOptional, getUserInfo);
 
 userRouter.get('/getCommitMessage', getCommitMessage);
 
-<<<<<<< HEAD
 // 获取用户信息
 userRouter.get('/:id', getUserInfo);
 
-=======
->>>>>>> 0c6989cee28c6407185c5ad67238a05f63cf1f34
 module.exports = userRouter;
