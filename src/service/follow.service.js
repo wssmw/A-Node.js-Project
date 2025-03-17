@@ -95,6 +95,7 @@ class FollowService {
                 SELECT 
                     t.id,
                     t.name,
+                    t.svg_icon,
                     t.created_at,
                     t.updated_at,
                     (SELECT COUNT(*) FROM article_tags WHERE tag_id = t.id) as article_count,

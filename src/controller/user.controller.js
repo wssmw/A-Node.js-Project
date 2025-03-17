@@ -1,4 +1,5 @@
 const service = require('../service/user.service');
+const { safeDeleteFile } = require('../utils/fileUtils');
 const fs = require('fs').promises; // 使用 promises 版本的 fs
 const fsSync = require('fs');
 const path = require('path');
@@ -13,18 +14,18 @@ const { getFileUrl } = require('../middleware/file.middleware');
 const uploadDir = 'uploads/avatar';
 
 // 安全删除文件函数
-async function safeDeleteFile(filePath) {
-    try {
-        if (fsSync.existsSync(filePath)) {
-            await fs.unlink(filePath);
-            return true;
-        }
-        return false;
-    } catch (error) {
-        console.error('删除文件失败:', error);
-        return false;
-    }
-}
+// async function safeDeleteFile(filePath) {
+//     try {
+//         if (fsSync.existsSync(filePath)) {
+//             await fs.unlink(filePath);
+//             return true;
+//         }
+//         return false;
+//     } catch (error) {
+//         console.error('删除文件失败:', error);
+//         return false;
+//     }
+// }
 
 class UserController {
     async create(ctx, next) {
@@ -143,26 +144,34 @@ class UserController {
         }
     }
 
+    // 获取用户信息
     async getUserInfo(ctx) {
         try {
             const { id } = ctx.params;
-            const userId = ctx.userinfo ? ctx.userinfo.id : null;
+            const currentUserId = ctx.userinfo ? ctx.userinfo.id : null;
 
-            // 获取用户基本信息
+            // 获取用户基本信息和统计数据
             const userInfo = await service.getUserInfo(id);
             if (!userInfo) {
                 handeleErrorReturnMessage(ctx, '用户不存在', 404);
                 return;
             }
 
-            // 如果是查看自己的信息，返回完整信息
-            if (userId === id) {
-                handeleSuccessReturnMessage(ctx, '获取成功', userInfo);
-                return;
+            // 如果是查看他人信息,过滤敏感信息
+            const { password, email, phone, qq, wechat, ...publicInfo } =
+                userInfo;
+
+            // 如果已登录,添加是否关注信息
+            if (currentUserId) {
+                const hasFollowed = await service.hasFollowed(
+                    currentUserId,
+                    id
+                );
+                publicInfo.has_followed = hasFollowed;
+            } else {
+                publicInfo.has_followed = false;
             }
 
-            // 如果是查看他人信息，过滤敏感信息
-            const { password, email, phone, ...publicInfo } = userInfo;
             handeleSuccessReturnMessage(ctx, '获取成功', publicInfo);
         } catch (error) {
             handeleErrorReturnMessage(ctx, error.message);

@@ -11,6 +11,7 @@ const {
     getUserArticles,
     getHotArticles,
     getLatestArticles,
+    deleteArticle,
 } = require('../controller/article.controller');
 const { upload } = require('../middleware/file.middleware');
 
@@ -35,5 +36,8 @@ articleRouter.post('/getHotArticles', getHotArticles);
 
 // 获取最新文章
 articleRouter.post('/getLatestArticles', getLatestArticles);
+
+// 删除文章（需要登录）
+articleRouter.post('/delete', verifyAuth, deleteArticle);
 
 module.exports = articleRouter;

@@ -274,6 +274,20 @@ class UserService {
             throw error;
         }
     }
+
+    // 检查是否关注了某用户
+    async hasFollowed(followerId, followingId) {
+        const statement = `
+            SELECT COUNT(*) as count 
+            FROM user_follows 
+            WHERE follower_id = ? AND following_id = ?
+        `;
+        const [result] = await connection.execute(statement, [
+            followerId,
+            followingId,
+        ]);
+        return result[0].count > 0;
+    }
 }
 
 module.exports = new UserService();
