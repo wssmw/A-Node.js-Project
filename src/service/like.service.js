@@ -187,7 +187,7 @@ class LikeService {
     }
 
     // 获取用户点赞的文章列表
-    async getUserLikedArticles(userId, offset = 0, limit = 10) {
+    async getUserLikedArticles(userId, currentUserId, offset = 0, limit = 10) {
         try {
             const statement = `
                 SELECT 
@@ -203,8 +203,8 @@ class LikeService {
                     c.name as category_name,
                     (SELECT COUNT(*) FROM article_views WHERE article_id = a.id) as view_count,
                     (SELECT COUNT(*) FROM comments WHERE article_id = a.id) as comment_count,
-                    (SELECT COUNT(*) FROM article_likes WHERE article_id = a.id) as like_count,
-                    TRUE as has_liked
+                    ${currentUserId ? `EXISTS (SELECT 1 FROM article_likes WHERE article_id = a.id AND user_id = ?) as has_liked` : 'FALSE as has_liked'}
+
                 FROM article_likes al
                 JOIN articles a ON al.article_id = a.id
                 LEFT JOIN users u ON a.user_id = u.id
@@ -214,7 +214,10 @@ class LikeService {
                 LIMIT ${parseInt(limit)} OFFSET ${parseInt(offset)}
             `;
 
-            const [articles] = await connection.execute(statement, [userId]);
+            const [articles] = await connection.execute(
+                statement,
+                currentUserId ? [currentUserId, userId] : [userId]
+            );
 
             // 获取每篇文章的标签
             for (let article of articles) {
@@ -251,7 +254,7 @@ class LikeService {
     }
 
     // 获取用户点赞的评论列表
-    async getUserLikedComments(userId, offset = 0, limit = 10) {
+    async getUserLikedComments(userId, currentUserId, offset = 0, limit = 10) {
         try {
             const statement = `
                 SELECT 
@@ -265,7 +268,7 @@ class LikeService {
                     u.nickname as author_nickname,
                     u.avatar_url as author_avatar,
                     (SELECT COUNT(*) FROM comment_likes WHERE comment_id = c.id) as like_count,
-                    TRUE as has_liked
+                    ${currentUserId ? `EXISTS (SELECT 1 FROM comment_likes WHERE comment_id = c.id AND user_id = ?) as has_liked` : 'FALSE as has_liked'}
                 FROM comment_likes cl
                 JOIN comments c ON cl.comment_id = c.id
                 JOIN users u ON c.user_id = u.id
@@ -274,8 +277,10 @@ class LikeService {
                 ORDER BY cl.created_at DESC
                 LIMIT ${parseInt(limit)} OFFSET ${parseInt(offset)}
             `;
-
-            const [comments] = await connection.execute(statement, [userId]);
+            const [comments] = await connection.execute(
+                statement,
+                currentUserId ? [currentUserId, userId] : [userId]
+            );
 
             // 获取总数
             const countStatement = `

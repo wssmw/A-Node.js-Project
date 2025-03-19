@@ -145,10 +145,12 @@ class LikeController {
     async getUserLikedArticles(ctx) {
         try {
             const { page = 1, pageSize = 10, userId } = ctx.request.body;
+            const currentUserId = ctx.userinfo ? ctx.userinfo.id : null;
 
             const offset = (parseInt(page) - 1) * parseInt(pageSize);
             const result = await likeService.getUserLikedArticles(
                 userId,
+                currentUserId,
                 offset,
                 pageSize
             );
@@ -168,10 +170,11 @@ class LikeController {
     async getUserLikedComments(ctx) {
         try {
             const { page = 1, pageSize = 10, userId } = ctx.request.body;
-
+            const currentUserId = ctx.userinfo ? ctx.userinfo.id : null;
             const offset = (parseInt(page) - 1) * parseInt(pageSize);
             const result = await likeService.getUserLikedComments(
                 userId,
+                currentUserId,
                 offset,
                 pageSize
             );

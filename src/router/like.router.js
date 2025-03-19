@@ -1,10 +1,13 @@
 const Router = require('koa-router');
-const { verifyAuth } = require('../middleware/login.middleware');
+const {
+    verifyAuth,
+    verifyAuthOptional,
+} = require('../middleware/login.middleware');
 const {
     likeArticle,
     likeComment,
     getUserLikedArticles,
-    getUserLikedComments
+    getUserLikedComments,
 } = require('../controller/like.controller');
 
 const likeRouter = new Router({ prefix: '/like' });
@@ -16,9 +19,17 @@ likeRouter.post('/article', verifyAuth, likeArticle);
 likeRouter.post('/comment', verifyAuth, likeComment);
 
 // 获取用户点赞的文章列表
-likeRouter.post('/getUserLikedArticles', getUserLikedArticles);
+likeRouter.post(
+    '/getUserLikedArticles',
+    verifyAuthOptional,
+    getUserLikedArticles
+);
 
 // 获取用户点赞的评论列表
-likeRouter.post('/getUserLikedComments', getUserLikedComments);
+likeRouter.post(
+    '/getUserLikedComments',
+    verifyAuthOptional,
+    getUserLikedComments
+);
 
 module.exports = likeRouter;
