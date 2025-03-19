@@ -201,6 +201,7 @@ class LikeService {
                     u.nickname as author_nickname,
                     c.id as category_id,
                     c.name as category_name,
+                    (SELECT COUNT(*) FROM article_views WHERE article_id = a.id) as view_count,
                     (SELECT COUNT(*) FROM comments WHERE article_id = a.id) as comment_count,
                     (SELECT COUNT(*) FROM article_likes WHERE article_id = a.id) as like_count,
                     TRUE as has_liked
