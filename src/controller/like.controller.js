@@ -111,7 +111,8 @@ class LikeController {
             }
 
             const result = await likeService.likeArticle(userId, articleId);
-            handeleSuccessReturnMessage(ctx, 
+            handeleSuccessReturnMessage(
+                ctx,
                 result.action === 'like' ? '点赞成功' : '取消点赞成功'
             );
         } catch (error) {
@@ -131,7 +132,8 @@ class LikeController {
             }
 
             const result = await likeService.likeComment(userId, commentId);
-            handeleSuccessReturnMessage(ctx, 
+            handeleSuccessReturnMessage(
+                ctx,
                 result.action === 'like' ? '点赞成功' : '取消点赞成功'
             );
         } catch (error) {
@@ -142,17 +144,20 @@ class LikeController {
     // 获取用户点赞的文章列表
     async getUserLikedArticles(ctx) {
         try {
-            const { id: userId } = ctx.userinfo;
-            const { page = 1, pageSize = 10 } = ctx.request.body;
+            const { page = 1, pageSize = 10, userId } = ctx.request.body;
 
             const offset = (parseInt(page) - 1) * parseInt(pageSize);
-            const result = await likeService.getUserLikedArticles(userId, offset, pageSize);
+            const result = await likeService.getUserLikedArticles(
+                userId,
+                offset,
+                pageSize
+            );
 
             handeleSuccessReturnMessage(ctx, '获取成功', {
                 articles: result.articles,
                 total: result.total,
                 page: parseInt(page),
-                pageSize: parseInt(pageSize)
+                pageSize: parseInt(pageSize),
             });
         } catch (error) {
             handeleErrorReturnMessage(ctx, '获取失败: ' + error.message);
@@ -162,17 +167,20 @@ class LikeController {
     // 获取用户点赞的评论列表
     async getUserLikedComments(ctx) {
         try {
-            const { id: userId } = ctx.userinfo;
-            const { page = 1, pageSize = 10 } = ctx.request.body;
+            const { page = 1, pageSize = 10, userId } = ctx.request.body;
 
             const offset = (parseInt(page) - 1) * parseInt(pageSize);
-            const result = await likeService.getUserLikedComments(userId, offset, pageSize);
+            const result = await likeService.getUserLikedComments(
+                userId,
+                offset,
+                pageSize
+            );
 
             handeleSuccessReturnMessage(ctx, '获取成功', {
                 comments: result.comments,
                 total: result.total,
                 page: parseInt(page),
-                pageSize: parseInt(pageSize)
+                pageSize: parseInt(pageSize),
             });
         } catch (error) {
             handeleErrorReturnMessage(ctx, '获取失败: ' + error.message);

@@ -16,9 +16,9 @@ likeRouter.post('/article', verifyAuth, likeArticle);
 likeRouter.post('/comment', verifyAuth, likeComment);
 
 // 获取用户点赞的文章列表
-likeRouter.post('/getUserLikedArticles', verifyAuth, getUserLikedArticles);
+likeRouter.post('/getUserLikedArticles', getUserLikedArticles);
 
 // 获取用户点赞的评论列表
-likeRouter.post('/getUserLikedComments', verifyAuth, getUserLikedComments);
+likeRouter.post('/getUserLikedComments', getUserLikedComments);
 
 module.exports = likeRouter;
