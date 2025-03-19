@@ -1,38 +1,118 @@
 const connection = require('../app/database');
 const notificationService = require('./notification.service');
+const socketService = require('./socket.service');
 const { generateEntityId } = require('../utils/idGenerator');
 
 class CommentService {
     // 创建评论
     async create(userId, articleId, content, parentId = null) {
-        // 如果有父评论ID，先验证父评论是否存在
-        if (parentId) {
-            const [parent] = await connection.execute(
-                'SELECT id FROM comments WHERE id = ?',
-                [parentId]
-            );
-            if (parent.length === 0) {
-                throw new Error('父评论不存在');
+        const connection = await require('../app/database').getConnection();
+        await connection.beginTransaction();
+
+        try {
+            // 如果有父评论ID，先验证父评论是否存在
+            if (parentId) {
+                const [parent] = await connection.execute(
+                    'SELECT id, user_id FROM comments WHERE id = ?',
+                    [parentId]
+                );
+                if (parent.length === 0) {
+                    throw new Error('父评论不存在');
+                }
             }
+
+            const id = generateEntityId();
+
+            const statement = `
+                INSERT INTO comments 
+                (id, user_id, article_id, content, parent_id) 
+                VALUES (?, ?, ?, ?, ?)
+            `;
+
+            const [result] = await connection.execute(statement, [
+                id,
+                userId,
+                articleId,
+                content,
+                parentId,
+            ]);
+
+            // 获取文章信息
+            const [article] = await connection.execute(
+                'SELECT user_id, title FROM articles WHERE id = ?',
+                [articleId]
+            );
+
+            // 获取评论者信息
+            const [commenter] = await connection.execute(
+                'SELECT id, username, nickname, avatar_url FROM users WHERE id = ?',
+                [userId]
+            );
+
+            // 创建通知
+            let notification = null;
+            if (parentId) {
+                // 如果是回复评论，通知被回复的评论作者
+                const [parentComment] = await connection.execute(
+                    'SELECT user_id FROM comments WHERE id = ?',
+                    [parentId]
+                );
+                if (parentComment[0] && parentComment[0].user_id !== userId) {
+                    notification = {
+                        userId: parentComment[0].user_id,
+                        fromUserId: userId,
+                        type: 'reply_comment',
+                        content: `回复了你在《${article[0].title}》中的评论`,
+                        targetId: articleId,
+                        createdAt: new Date(),
+                        fromUser: {
+                            id: commenter[0].id,
+                            username: commenter[0].username,
+                            nickname: commenter[0].nickname,
+                            avatarUrl: commenter[0].avatar_url,
+                        },
+                    };
+                }
+            } else if (article[0] && article[0].user_id !== userId) {
+                // 如果是评论文章，通知文章作者
+                notification = {
+                    userId: article[0].user_id,
+                    fromUserId: userId,
+                    type: 'comment_article',
+                    content: `评论了你的文章《${article[0].title}》`,
+                    targetId: articleId,
+                    createdAt: new Date(),
+                    fromUser: {
+                        id: commenter[0].id,
+                        username: commenter[0].username,
+                        nickname: commenter[0].nickname,
+                        avatarUrl: commenter[0].avatar_url,
+                    },
+                };
+            }
+
+            // 如果有通知，保存并发送
+            if (notification) {
+                try {
+                    await notificationService.createNotification(notification);
+                    socketService.sendNotification(
+                        notification.userId,
+                        notification
+                    );
+                } catch (notificationError) {
+                    console.error('通知创建或发送失败:', notificationError);
+                    // 通知失败不影响评论操作，继续提交事务
+                }
+            }
+
+            await connection.commit();
+            return { ...result, id };
+        } catch (error) {
+            await connection.rollback();
+            throw error;
+        } finally {
+            connection.release();
         }
-
-        const id = generateEntityId();
-
-        const statement = `
-            INSERT INTO comments 
-            (id, user_id, article_id, content, parent_id) 
-            VALUES (?, ?, ?, ?, ?)
-        `;
-
-        const [result] = await connection.execute(statement, [
-            id,
-            userId,
-            articleId,
-            content,
-            parentId,
-        ]);
-
-        return { ...result, id };
     }
 
     // 删除评论

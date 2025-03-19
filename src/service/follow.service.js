@@ -1,17 +1,68 @@
 const connection = require('../app/database');
 const { generateEntityId } = require('../utils/idGenerator');
+const notificationService = require('./notification.service');
+const socketService = require('./socket.service');
 
 class FollowService {
     // 关注用户
     async followUser(followerId, followingId) {
         try {
-            const id = generateEntityId();
-            const statement = `
-                INSERT INTO user_follows (id, follower_id, following_id)
-                VALUES (?, ?, ?)
-            `;
-            await connection.execute(statement, [id, followerId, followingId]);
-            return { action: 'follow', id };
+            const connection = await require('../app/database').getConnection();
+            await connection.beginTransaction();
+
+            try {
+                const id = generateEntityId();
+                const statement = `
+                    INSERT INTO user_follows (id, follower_id, following_id)
+                    VALUES (?, ?, ?)
+                `;
+                await connection.execute(statement, [
+                    id,
+                    followerId,
+                    followingId,
+                ]);
+
+                // 获取关注者信息
+                const [follower] = await connection.execute(
+                    'SELECT id, username, nickname, avatar_url FROM users WHERE id = ?',
+                    [followerId]
+                );
+
+                // 创建通知
+                const notification = {
+                    userId: followingId,
+                    fromUserId: followerId,
+                    type: 'follow_user',
+                    content: `关注了你`,
+                    targetId: followerId,
+                    createdAt: new Date(),
+                    fromUser: {
+                        id: follower[0].id,
+                        username: follower[0].username,
+                        nickname: follower[0].nickname,
+                        avatarUrl: follower[0].avatar_url,
+                    },
+                };
+
+                try {
+                    // 保存通知到数据库
+                    await notificationService.createNotification(notification);
+
+                    // 发送实时通知
+                    socketService.sendNotification(followingId, notification);
+                } catch (notificationError) {
+                    console.error('通知创建或发送失败:', notificationError);
+                    // 通知失败不影响关注操作，继续提交事务
+                }
+
+                await connection.commit();
+                return { action: 'follow', id };
+            } catch (error) {
+                await connection.rollback();
+                throw error;
+            } finally {
+                connection.release();
+            }
         } catch (error) {
             if (error.code === 'ER_DUP_ENTRY') {
                 // 如果已经关注，则取消关注

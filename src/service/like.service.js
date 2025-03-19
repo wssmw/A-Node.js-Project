@@ -1,5 +1,6 @@
 const connection = require('../app/database');
 const notificationService = require('./notification.service');
+const socketService = require('./socket.service');
 const { generateEntityId } = require('../utils/idGenerator');
 
 class LikeService {
@@ -19,7 +20,7 @@ class LikeService {
                 `;
                 await connection.execute(statement, [id, articleId, userId]);
 
-                // 2. 获取文章作者ID
+                // 2. 获取文章作者ID和文章信息
                 const [article] = await connection.execute(
                     'SELECT user_id, title FROM articles WHERE id = ?',
                     [articleId]
@@ -27,13 +28,42 @@ class LikeService {
 
                 // 3. 创建通知
                 if (article[0] && article[0].user_id !== userId) {
-                    await notificationService.createNotification({
-                        userId: article[0].user_id, // 通知发送给文章作者
-                        fromUserId: userId, // 点赞的用户
+                    // 获取点赞用户信息
+                    const [liker] = await connection.execute(
+                        'SELECT id, username, nickname, avatar_url FROM users WHERE id = ?',
+                        [userId]
+                    );
+
+                    const notification = {
+                        userId: article[0].user_id,
+                        fromUserId: userId,
                         type: 'like_article',
                         content: `赞了你的文章《${article[0].title}》`,
                         targetId: articleId,
-                    });
+                        createdAt: new Date(),
+                        fromUser: {
+                            id: liker[0].id,
+                            username: liker[0].username,
+                            nickname: liker[0].nickname,
+                            avatarUrl: liker[0].avatar_url,
+                        },
+                    };
+
+                    try {
+                        // 保存通知到数据库
+                        await notificationService.createNotification(
+                            notification
+                        );
+
+                        // 只有在通知成功保存后才发送实时通知
+                        socketService.sendNotification(
+                            article[0].user_id,
+                            notification
+                        );
+                    } catch (notificationError) {
+                        console.error('通知创建或发送失败:', notificationError);
+                        // 通知失败不影响点赞操作，继续提交事务
+                    }
                 }
 
                 await connection.commit();
@@ -84,7 +114,6 @@ class LikeService {
     // 评论点赞
     async likeComment(userId, commentId) {
         try {
-            // 开始事务
             const connection = await require('../app/database').getConnection();
             await connection.beginTransaction();
 
@@ -110,13 +139,42 @@ class LikeService {
 
                 // 3. 创建通知
                 if (comment[0] && comment[0].user_id !== userId) {
-                    await notificationService.createNotification({
+                    // 获取点赞用户信息
+                    const [liker] = await connection.execute(
+                        'SELECT id, username, nickname, avatar_url FROM users WHERE id = ?',
+                        [userId]
+                    );
+
+                    const notification = {
                         userId: comment[0].user_id,
                         fromUserId: userId,
                         type: 'like_comment',
                         content: `赞了你在《${comment[0].title}》中的评论`,
                         targetId: comment[0].article_id,
-                    });
+                        createdAt: new Date(),
+                        fromUser: {
+                            id: liker[0].id,
+                            username: liker[0].username,
+                            nickname: liker[0].nickname,
+                            avatarUrl: liker[0].avatar_url,
+                        },
+                    };
+
+                    try {
+                        // 保存通知到数据库
+                        await notificationService.createNotification(
+                            notification
+                        );
+
+                        // 只有在通知成功保存后才发送实时通知
+                        socketService.sendNotification(
+                            comment[0].user_id,
+                            notification
+                        );
+                    } catch (notificationError) {
+                        console.error('通知创建或发送失败:', notificationError);
+                        // 通知失败不影响点赞操作，继续提交事务
+                    }
                 }
 
                 await connection.commit();

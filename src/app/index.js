@@ -1,6 +1,8 @@
 const Koa = require('koa');
 const static = require('koa-static');
 const path = require('path');
+const { createServer } = require('http');
+const socketService = require('../service/socket.service');
 
 const userRouter = require('../router/user.router');
 const loginRouter = require('../router/login.router');
@@ -14,6 +16,12 @@ const errHandle = require('./err-handle');
 const useRouters = require('../router/index');
 
 const app = new Koa();
+
+// 创建 HTTP 服务器
+const server = createServer(app.callback());
+
+// 初始化 Socket 服务
+socketService.initialize(server);
 
 app.use(bodyParser()); //把传入的json数据解析
 
@@ -29,5 +37,11 @@ initDatabase().catch(err => {
 useRouters(app);
 
 app.on('err', errHandle);
+
+// 启动服务器
+const PORT = process.env.PORT || 3000;
+server.listen(PORT, () => {
+    console.log(`Server is running on port ${PORT}`);
+});
 
 module.exports = app;

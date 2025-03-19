@@ -3,7 +3,7 @@ const { verifyAuth } = require('../middleware/login.middleware');
 const {
     getNotifications,
     markAsRead,
-    getUnreadCount
+    getUnreadCount,
 } = require('../controller/notification.controller');
 
 const notificationRouter = new Router({ prefix: '/notification' });
@@ -17,4 +17,4 @@ notificationRouter.post('/read', verifyAuth, markAsRead);
 // 获取未读通知数量
 notificationRouter.get('/unread', verifyAuth, getUnreadCount);
 
-module.exports = notificationRouter; 
+module.exports = notificationRouter;
