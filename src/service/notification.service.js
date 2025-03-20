@@ -203,17 +203,42 @@ class NotificationService {
     }
 
     // 标记通知为已读
-    async markAsRead(notificationId, userId) {
-        const statement = `
+    async markAsRead(notificationId, userId, type = null) {
+        // 如果没有提供任何参数，直接返回
+        if (!notificationId && !userId && !type) {
+            return 0;
+        }
+
+        let statement = `
             UPDATE notifications 
             SET is_read = true 
-            WHERE id = ? AND user_id = ?
+            WHERE user_id = ?
         `;
-        const [result] = await connection.execute(statement, [
-            notificationId,
-            userId,
-        ]);
-        return result.affectedRows > 0;
+        const params = [userId];
+
+        if (notificationId) {
+            // 如果提供了通知ID，则只标记该通知
+            statement += ' AND id = ?';
+            params.push(notificationId);
+        } else if (type) {
+            // 如果提供了类型，则标记该类型的所有通知
+            if (Array.isArray(type)) {
+                // 如果是数组，使用 IN 查询
+                const placeholders = type.map(() => '?').join(',');
+                statement += ` AND type IN (${placeholders})`;
+                params.push(...type);
+            } else {
+                // 如果是单个类型，使用等号查询
+                statement += ' AND type = ?';
+                params.push(type);
+            }
+        } else {
+            // 如果没有提供任何参数，则标记所有通知
+            statement += ' AND is_read = false';
+        }
+
+        const [result] = await connection.execute(statement, params);
+        return result.affectedRows;
     }
 
     // 标记所有通知为已读

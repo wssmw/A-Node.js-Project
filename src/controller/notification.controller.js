@@ -45,12 +45,13 @@ class NotificationController {
     // 标记通知为已读
     async markAsRead(ctx) {
         try {
-            const { notificationId } = ctx.params;
+            const { notificationId, type } = ctx.request.body;
             const { id: userId } = ctx.userinfo;
 
             const success = await notificationService.markAsRead(
                 notificationId,
-                userId
+                userId,
+                type
             );
 
             if (success) {
