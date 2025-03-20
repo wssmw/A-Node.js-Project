@@ -103,7 +103,8 @@ class NotificationController {
             const { id: userId } = ctx.userinfo;
 
             const count = await notificationService.getUnreadCount(userId);
-            handeleSuccessReturnMessage(ctx, '获取成功', { count });
+            console.log(count, 'count');
+            handeleSuccessReturnMessage(ctx, '获取成功', count);
         } catch (error) {
             handeleErrorReturnMessage(ctx, '获取失败: ' + error.message);
         }
