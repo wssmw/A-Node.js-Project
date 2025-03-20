@@ -8,16 +8,16 @@ class NotificationController {
     // 获取所有通知
     async getNotifications(ctx) {
         try {
-            const { page = 1, pageSize = 10, type } = ctx.request.query;
+            const { page = 1, pageSize = 10, type } = ctx.request.body;
             const { id: userId } = ctx.userinfo;
-
+            console.log(page, pageSize, type, 'page, pageSize, type');
             const result = await notificationService.getNotifications(
                 userId,
                 parseInt(page),
                 parseInt(pageSize),
                 type
             );
-
+            console.log(result, 'result');
             handeleSuccessReturnMessage(ctx, '获取成功', result);
         } catch (error) {
             handeleErrorReturnMessage(ctx, '获取失败: ' + error.message);

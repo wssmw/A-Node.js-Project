@@ -4,13 +4,40 @@ const { generateEntityId } = require('../utils/idGenerator');
 class NotificationService {
     // 获取所有通知
     async getNotifications(userId, page = 1, pageSize = 10, type = null) {
-        const offset = (page - 1) * pageSize;
+        // 确保参数是数字类型
+        const safePage = parseInt(page);
+        const safePageSize = parseInt(pageSize);
+        const offset = (safePage - 1) * safePageSize;
+
         let statement = `
             SELECT 
                 n.*,
                 u.username as from_username,
                 u.nickname as from_nickname,
-                u.avatar_url as from_avatar
+                u.avatar_url as from_avatar,
+                CASE 
+                    WHEN n.type = 'comment_article' THEN (
+                        SELECT JSON_OBJECT(
+                            'title', a.title,
+                            'content', c.content
+                        )
+                        FROM articles a
+                        LEFT JOIN comments c ON n.target_id = c.article_id AND c.user_id = n.from_user_id
+                        WHERE a.id = n.target_id
+                    )
+                    WHEN n.type = 'reply_comment' THEN (
+                        SELECT JSON_OBJECT(
+                            'title', a.title,
+                            'content', c.content,
+                            'parentContent', pc.content
+                        )
+                        FROM articles a
+                        LEFT JOIN comments c ON n.target_id = c.article_id AND c.user_id = n.from_user_id
+                        LEFT JOIN comments pc ON c.parent_id = pc.id
+                        WHERE a.id = n.target_id
+                    )
+                    ELSE NULL
+                END as extra_content
             FROM notifications n
             LEFT JOIN users u ON n.from_user_id = u.id
             WHERE n.user_id = ?
@@ -20,15 +47,20 @@ class NotificationService {
 
         // 如果指定了通知类型，添加类型过滤
         if (type) {
-            statement += ' AND n.type = ?';
-            params.push(type);
+            if (Array.isArray(type)) {
+                // 如果是数组，使用 IN 查询，将数组展开为多个问号
+                const placeholders = type.map(() => '?').join(',');
+                statement += ` AND n.type IN (${placeholders})`;
+                params.push(...type);
+            } else {
+                // 如果是单个类型，使用等号查询
+                statement += ' AND n.type = ?';
+                params.push(type);
+            }
         }
 
-        statement += ' ORDER BY n.created_at DESC LIMIT ? OFFSET ?';
-        params.push(pageSize, offset);
-
+        statement += ` ORDER BY n.created_at DESC LIMIT ${offset},${safePageSize}`;
         const [notifications] = await connection.execute(statement, params);
-
         // 获取总数
         let countStatement = `
             SELECT COUNT(*) as total 
@@ -38,8 +70,16 @@ class NotificationService {
         const countParams = [userId];
 
         if (type) {
-            countStatement += ' AND type = ?';
-            countParams.push(type);
+            if (Array.isArray(type)) {
+                // 如果是数组，使用 IN 查询，将数组展开为多个问号
+                const placeholders = type.map(() => '?').join(',');
+                countStatement += ` AND type IN (${placeholders})`;
+                countParams.push(...type);
+            } else {
+                // 如果是单个类型，使用等号查询
+                countStatement += ' AND type = ?';
+                countParams.push(type);
+            }
         }
 
         const [countResult] = await connection.execute(
@@ -47,11 +87,50 @@ class NotificationService {
             countParams
         );
 
+        // 处理通知数据，添加额外内容
+        const processedNotifications = notifications.map(notification => {
+            const result = {
+                ...notification,
+                fromUser: {
+                    id: notification.from_user_id,
+                    username: notification.from_username,
+                    nickname: notification.from_nickname,
+                    avatarUrl: notification.from_avatar,
+                },
+            };
+
+            // 删除原始字段
+            delete result.from_user_id;
+            delete result.from_username;
+            delete result.from_nickname;
+            delete result.from_avatar;
+
+            // 处理额外内容
+            if (notification.extra_content) {
+                try {
+                    const extraContent = notification.extra_content;
+                    if (notification.type === 'comment_article') {
+                        result.articleTitle = extraContent.title;
+                        result.commentContent = extraContent.content;
+                    } else if (notification.type === 'reply_comment') {
+                        result.articleTitle = extraContent.title;
+                        result.commentContent = extraContent.content;
+                        result.parentCommentContent =
+                            extraContent.parentContent;
+                    }
+                } catch (error) {
+                    console.error('解析额外内容失败:', error);
+                }
+            }
+            delete result.extra_content;
+            return result;
+        });
+
         return {
-            notifications,
+            notifications: processedNotifications,
             total: countResult[0].total,
-            page,
-            pageSize,
+            page: safePage,
+            pageSize: safePageSize,
             type,
         };
     }
@@ -65,7 +144,6 @@ class NotificationService {
                 target_id, is_read, created_at
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         `;
-        console.log(notification, 'notification');
         const [result] = await connection.execute(statement, [
             id,
             notification.userId,
@@ -82,7 +160,11 @@ class NotificationService {
 
     // 获取用户的通知列表
     async getUserNotifications(userId, page = 1, pageSize = 10) {
-        const offset = (page - 1) * pageSize;
+        // 确保参数是数字类型
+        const safePage = parseInt(page);
+        const safePageSize = parseInt(pageSize);
+        const offset = (safePage - 1) * safePageSize;
+
         const statement = `
             SELECT 
                 n.*,
@@ -98,7 +180,7 @@ class NotificationService {
 
         const [notifications] = await connection.execute(statement, [
             userId,
-            pageSize,
+            safePageSize,
             offset,
         ]);
 
@@ -115,8 +197,8 @@ class NotificationService {
         return {
             notifications,
             total: countResult[0].total,
-            page,
-            pageSize,
+            page: safePage,
+            pageSize: safePageSize,
         };
     }
 
@@ -161,12 +243,29 @@ class NotificationService {
     // 获取未读通知数量
     async getUnreadCount(userId) {
         const statement = `
-            SELECT COUNT(*) as count 
+            SELECT 
+                COUNT(*) as total,
+                SUM(CASE WHEN type = 'like_article' THEN 1 ELSE 0 END) as like_article_count,
+                SUM(CASE WHEN type = 'like_comment' THEN 1 ELSE 0 END) as like_comment_count,
+                SUM(CASE WHEN type = 'comment_article' THEN 1 ELSE 0 END) as comment_article_count,
+                SUM(CASE WHEN type = 'reply_comment' THEN 1 ELSE 0 END) as reply_comment_count,
+                SUM(CASE WHEN type = 'follow_user' THEN 1 ELSE 0 END) as follow_user_count,
+                SUM(CASE WHEN type = 'collect_article' THEN 1 ELSE 0 END) as collect_article_count
             FROM notifications 
             WHERE user_id = ? AND is_read = false
         `;
         const [result] = await connection.execute(statement, [userId]);
-        return result[0].count;
+        return {
+            total: result[0].total || 0,
+            byType: {
+                like_article: result[0].like_article_count || 0,
+                like_comment: result[0].like_comment_count || 0,
+                comment_article: result[0].comment_article_count || 0,
+                reply_comment: result[0].reply_comment_count || 0,
+                follow_user: result[0].follow_user_count || 0,
+                collect_article: result[0].collect_article_count || 0,
+            },
+        };
     }
 }
 

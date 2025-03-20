@@ -1,5 +1,7 @@
 const connection = require('../app/database');
 const { generateEntityId } = require('../utils/idGenerator');
+const notificationService = require('./notification.service');
+const socketService = require('./socket.service');
 
 class CollectionService {
     // 创建收藏夹
@@ -109,18 +111,80 @@ class CollectionService {
     }
 
     // 添加文章到收藏夹
-    async addArticleToCollection(collectionId, articleId) {
-        const id = generateEntityId();
-        const statement = `
-            INSERT INTO collection_articles (id, collection_id, article_id)
-            VALUES (?, ?, ?)
-        `;
-        const [result] = await connection.execute(statement, [
-            id,
-            collectionId,
-            articleId,
-        ]);
-        return { ...result, id };
+    async addArticleToCollection(collectionId, articleId, userId) {
+        const connection = await require('../app/database').getConnection();
+        await connection.beginTransaction();
+
+        try {
+            // 1. 检查收藏夹权限
+            const collection = await this.getCollectionById(
+                collectionId,
+                userId
+            );
+            if (!collection || collection.user_id !== userId) {
+                throw new Error('没有权限操作此收藏夹');
+            }
+
+            // 2. 添加文章到收藏夹
+            const id = generateEntityId();
+            const statement = `
+                INSERT INTO collection_articles (id, collection_id, article_id)
+                VALUES (?, ?, ?)
+            `;
+            await connection.execute(statement, [id, collectionId, articleId]);
+
+            // 3. 获取文章信息
+            const [article] = await connection.execute(
+                'SELECT user_id, title FROM articles WHERE id = ?',
+                [articleId]
+            );
+
+            // 4. 创建通知
+            if (article[0] && article[0].user_id !== userId) {
+                // 获取收藏者信息
+                const [collector] = await connection.execute(
+                    'SELECT id, username, nickname, avatar_url FROM users WHERE id = ?',
+                    [userId]
+                );
+
+                const notification = {
+                    userId: article[0].user_id,
+                    fromUserId: userId,
+                    type: 'collect_article',
+                    content: `收藏了你的文章《${article[0].title}》`,
+                    targetId: articleId,
+                    createdAt: new Date(),
+                    fromUser: {
+                        id: collector[0].id,
+                        username: collector[0].username,
+                        nickname: collector[0].nickname,
+                        avatarUrl: collector[0].avatar_url,
+                    },
+                };
+
+                try {
+                    // 保存通知到数据库
+                    await notificationService.createNotification(notification);
+
+                    // 发送实时通知
+                    socketService.sendNotification(
+                        article[0].user_id,
+                        notification
+                    );
+                } catch (notificationError) {
+                    console.error('通知创建或发送失败:', notificationError);
+                    // 通知失败不影响收藏操作，继续提交事务
+                }
+            }
+
+            await connection.commit();
+            return { id };
+        } catch (error) {
+            await connection.rollback();
+            throw error;
+        } finally {
+            connection.release();
+        }
     }
 
     // 从收藏夹移除文章
