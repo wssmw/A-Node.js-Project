@@ -24,6 +24,7 @@ class NotificationService {
                         FROM articles a
                         LEFT JOIN comments c ON n.target_id = c.article_id AND c.user_id = n.from_user_id
                         WHERE a.id = n.target_id
+                        LIMIT 1
                     )
                     WHEN n.type = 'reply_comment' THEN (
                         SELECT JSON_OBJECT(
@@ -35,6 +36,7 @@ class NotificationService {
                         LEFT JOIN comments c ON n.target_id = c.article_id AND c.user_id = n.from_user_id
                         LEFT JOIN comments pc ON c.parent_id = pc.id
                         WHERE a.id = n.target_id
+                        LIMIT 1
                     )
                     ELSE NULL
                 END as extra_content
@@ -61,6 +63,7 @@ class NotificationService {
 
         statement += ` ORDER BY n.created_at DESC LIMIT ${offset},${safePageSize}`;
         const [notifications] = await connection.execute(statement, params);
+
         // 获取总数
         let countStatement = `
             SELECT COUNT(*) as total 
@@ -123,6 +126,7 @@ class NotificationService {
                 }
             }
             delete result.extra_content;
+
             return result;
         });
 
