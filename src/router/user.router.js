@@ -33,12 +33,8 @@ userRouter.post('/updateUserInfo', verifyAuth, updateUserInfo);
 // 删除用户
 userRouter.post('/deleteUser', verifyAuth, deleteUser);
 
+userRouter.get('/getCommitMessage', getCommitMessage);
 // 获取用户信息（可选登录）
 userRouter.get('/:id', verifyAuthOptional, getUserInfo);
-
-userRouter.get('/getCommitMessage', getCommitMessage);
-
-// 获取用户信息
-userRouter.get('/:id', getUserInfo);
 
 module.exports = userRouter;

@@ -16,6 +16,25 @@ class NotificationService {
                 u.nickname as from_nickname,
                 u.avatar_url as from_avatar,
                 CASE 
+                    WHEN n.type = 'like_article' THEN (
+                        SELECT JSON_OBJECT(
+                            'title', a.title,
+                            'content', a.content
+                        )
+                        FROM articles a
+                        WHERE a.id = n.target_id
+                        LIMIT 1
+                    )
+                    WHEN n.type = 'like_comment' THEN (
+                         SELECT JSON_OBJECT(
+                            'title', a.title,
+                            'content', c.content
+                        )
+                        FROM articles a
+                        LEFT JOIN comments c ON n.target_id = c.article_id AND c.user_id = n.from_user_id
+                        WHERE a.id = n.target_id
+                        LIMIT 1
+                    )
                     WHEN n.type = 'comment_article' THEN (
                         SELECT JSON_OBJECT(
                             'title', a.title,
@@ -84,7 +103,7 @@ class NotificationService {
                 countParams.push(type);
             }
         }
-
+        console.log(countStatement, 'countStatement');
         const [countResult] = await connection.execute(
             countStatement,
             countParams
@@ -112,7 +131,11 @@ class NotificationService {
             if (notification.extra_content) {
                 try {
                     const extraContent = notification.extra_content;
-                    if (notification.type === 'comment_article') {
+                    if (notification.type === 'like_article') {
+                        result.articleTitle = extraContent.title;
+                    } else if (notification.type === 'like_comment') {
+                        result.articleTitle = extraContent.title;
+                    } else if (notification.type === 'comment_article') {
                         result.articleTitle = extraContent.title;
                         result.commentContent = extraContent.content;
                     } else if (notification.type === 'reply_comment') {
