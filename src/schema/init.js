@@ -166,11 +166,13 @@ async function initDatabase() {
             'users', // 用户表（最基础的表）
             'categories', // 分类表（独立表）
             'tags', // 标签表（独立表）
+            'tool_categories', // 工具分类表（独立表）
 
             // 第二层：依赖单个基础表
             'user_profiles', // 依赖 users
             'collections', // 依赖 users
             'articles', // 依赖 users, categories
+            'tools', // 工具表（独立表）
 
             // 第三层：依赖第二层表
             'comments', // 依赖 users, articles
@@ -191,6 +193,7 @@ async function initDatabase() {
                 // 创建新表
                 const fields = TABLES[tableName];
                 const sql = generateCreateTableSQL(tableName, fields);
+                console.log(sql, 'sql');
                 try {
                     await connection.execute(sql);
                     console.log(`表 ${tableName} 创建成功`);

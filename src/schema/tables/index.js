@@ -16,6 +16,8 @@ const articleViews = require('./article_views');
 const userFollows = require('./user_follows');
 const tagFollows = require('./tag_follows');
 const notifications = require('./notifications');
+const toolCategories = require('./tool_categories');
+const tools = require('./tools');
 
 /**
  * 表关系说明：
@@ -26,7 +28,7 @@ const notifications = require('./notifications');
 
 module.exports = {
     users,
-    user_profiles: userProfiles,  // 添加用户详情表
+    user_profiles: userProfiles, // 添加用户详情表
     categories, // 先创建分类表
     tags, // 再创建标签表
     articles, // 然后是文章表（依赖用户表和分类表）
@@ -40,4 +42,6 @@ module.exports = {
     user_follows: userFollows,
     tag_follows: tagFollows,
     notifications,
+    tool_categories: toolCategories,
+    tools,
 };
