@@ -35,17 +35,18 @@ class ToolController {
     // 创建工具分类
     async createCategory(ctx) {
         try {
-            const { category, icon_url } = ctx.request.body;
+            const { category, icon_url, svg_icon } = ctx.request.body;
             console.log(category, icon_url, 'category, icon_url');
             // 验证必填字段
-            if (!category || !icon_url) {
-                handeleErrorReturnMessage(ctx, '分类名称和图标不能为空');
+            if (!category) {
+                handeleErrorReturnMessage(ctx, '分类名称不能为空');
                 return;
             }
 
             const result = await toolService.createCategory({
                 category,
                 icon_url,
+                svg_icon,
             });
             handeleSuccessReturnMessage(ctx, '创建成功', result);
         } catch (error) {
@@ -58,8 +59,8 @@ class ToolController {
         try {
             const { category, icon_url, categoryId } = ctx.request.body;
 
-            if (!category || !icon_url) {
-                handeleErrorReturnMessage(ctx, '分类名称和图标不能为空');
+            if (!category) {
+                handeleErrorReturnMessage(ctx, '分类名称不能为空');
                 return;
             }
 
@@ -87,17 +88,17 @@ class ToolController {
     // 创建工具
     async createTool(ctx) {
         try {
-            const { category_id, name, description, icon_url, website } =
-                ctx.request.body;
+            const {
+                category_id,
+                name,
+                description,
+                icon_url,
+                website,
+                svg_icon,
+            } = ctx.request.body;
 
             // 验证必填字段
-            if (
-                !category_id ||
-                !name ||
-                !description ||
-                !icon_url ||
-                !website
-            ) {
+            if (!category_id || !name || !description || !website) {
                 handeleErrorReturnMessage(ctx, '所有字段都是必填的');
                 return;
             }
@@ -108,6 +109,7 @@ class ToolController {
                 description,
                 icon_url,
                 website,
+                svg_icon,
             });
             handeleSuccessReturnMessage(ctx, '创建成功', result);
         } catch (error) {

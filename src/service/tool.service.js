@@ -81,15 +81,26 @@ class ToolService {
 
     // 创建工具分类
     async createCategory(data) {
-        const { category, icon_url } = data;
-        const statement = `
-            INSERT INTO tool_categories (  category, icon_url)
-            VALUES (?, ?)
-        `;
-        const [result] = await connection.execute(statement, [
+        const { category, icon_url, svg_icon } = data;
+        console.log(
             category,
             icon_url,
-        ]);
+            svg_icon,
+            'category, icon_url, svg_icon'
+        );
+        const statement = `
+            INSERT INTO tool_categories (category ${icon_url ? ',icon_url' : ''}${svg_icon ? ',svg_icon' : ''})
+            VALUES (? ${icon_url ? ',? ' : ''}${svg_icon ? ' ,?' : ''})
+        `;
+        console.log(statement, 'statement');
+        let params = [category];
+        if (icon_url) {
+            params.push(icon_url);
+        }
+        if (svg_icon) {
+            params.push(svg_icon);
+        }
+        const [result] = await connection.execute(statement, params);
         return result;
     }
 
@@ -130,19 +141,21 @@ class ToolService {
     async createTool(data) {
         const id = generateEntityId();
 
-        const { category_id, name, description, icon_url, website } = data;
+        const { category_id, name, description, icon_url, website, svg_icon } =
+            data;
         const statement = `
-            INSERT INTO tools (id, category_id, name, description, icon_url, website)
-            VALUES (?, ?, ?, ?, ?, ?)
+            INSERT INTO tools (id, category_id, name, description, website${icon_url ? ',icon_url' : ''}${svg_icon ? ',svg_icon' : ''})
+            VALUES (?, ?, ?, ?, ? ${icon_url ? ',? ' : ''}${svg_icon ? ' ,?' : ''})
         `;
-        const [result] = await connection.execute(statement, [
-            id,
-            category_id,
-            name,
-            description,
-            icon_url,
-            website,
-        ]);
+        let params = [id, category_id, name, description, website];
+        if (icon_url) {
+            params.push(icon_url);
+        }
+        if (svg_icon) {
+            params.push(svg_icon);
+        }
+        console.log(statement, params, 'statement, params');
+        const [result] = await connection.execute(statement, params);
         return result;
     }
 
