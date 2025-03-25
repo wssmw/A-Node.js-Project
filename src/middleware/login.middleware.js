@@ -6,7 +6,7 @@ const service = require('../service/user.service');
 
 const md5password = require('../utils/passwordhandle');
 
-const REDIRECTURL = 'http://localhost:8000';
+const { GITEE_LOGIN_REDIRECTURL } = process.env;
 const { PRIVATE_KEY, PUBLIC_KEY } = require('../app/config');
 const { default: axios } = require('axios');
 const { handeleSuccessReturnMessage } = require('../utils');
@@ -58,13 +58,17 @@ const verifyLogin = async (ctx, next) => {
 };
 
 const redirectLogin = async (ctx, next) => {
-    let authUrl = `${GITEE_AUTH_URL}?client_id=${CLIENT_ID}&redirect_uri=${REDIRECTURL}&response_type=code`;
+    console.log(GITEE_LOGIN_REDIRECTURL, 'GITEE_LOGIN_REDIRECTURL');
+
+    let authUrl = `${GITEE_AUTH_URL}?client_id=${CLIENT_ID}&redirect_uri=${GITEE_LOGIN_REDIRECTURL}&response_type=code`;
+    console.log(authUrl, 'authUrl');
     ctx.redirect(authUrl);
 };
 
 const verifyAuth = async (ctx, next) => {
     const authorization = ctx.headers.authorization || '';
     const token = authorization.replace('Bearer ', '');
+    console.log(token, 'token');
     try {
         const result = jwt.verify(token, PUBLIC_KEY, {
             algorithms: ['RS256'],
@@ -93,7 +97,7 @@ const getAccessToken = async (ctx, next) => {
                 client_id: CLIENT_ID,
                 client_secret: CLIENT_SECRET,
                 code,
-                redirect_uri: REDIRECTURL,
+                redirect_uri: GITEE_LOGIN_REDIRECTURL,
                 grant_type: 'authorization_code',
             }
         );
