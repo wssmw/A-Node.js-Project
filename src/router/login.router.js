@@ -10,7 +10,7 @@ const {
     verifyLogin,
     verifyAuth,
     getAccessToken,
-    testLogin,
+    redirectLogin,
 } = require('../middleware/login.middleware');
 
 const loginRouter = new Router();
@@ -19,10 +19,10 @@ const loginRouter = new Router();
 loginRouter.post('/login', verifyLogin, login);
 // gitee登录
 // loginRouter.post("/login/gitee", getAccessToken, loginWithGitee);
-loginRouter.post('/login/gitee', testLogin);
+loginRouter.get('/login/gitee', redirectLogin);
 loginRouter.get('/login/gitee/callback', getAccessToken, loginWithGitee);
 
 // 验证登录是否成功
-loginRouter.get('/test', verifyAuth, seccess);
+loginRouter.get('/test', seccess);
 
 module.exports = loginRouter;

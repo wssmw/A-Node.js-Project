@@ -25,18 +25,17 @@ async function checkTableExists(tableName) {
 }
 
 /**
- * 获取表的当前结构
+ * 获取表的当前列信息
  * @param {string} tableName 表名
- * @returns {Promise<Array>}
  */
 async function getTableColumns(tableName) {
     const [columns] = await connection.execute(
         `
-    SELECT COLUMN_NAME, COLUMN_TYPE, IS_NULLABLE, COLUMN_DEFAULT, EXTRA, COLUMN_COMMENT
-    FROM information_schema.columns 
-    WHERE table_schema = DATABASE()
-    AND table_name = ?
-  `,
+        SELECT COLUMN_NAME, COLUMN_TYPE, IS_NULLABLE, COLUMN_DEFAULT, EXTRA
+        FROM INFORMATION_SCHEMA.COLUMNS
+        WHERE TABLE_SCHEMA = DATABASE()
+        AND TABLE_NAME = ?
+    `,
         [tableName]
     );
     return columns;
@@ -49,53 +48,29 @@ async function getTableColumns(tableName) {
  */
 async function checkTableNeedsUpdate(tableName) {
     const currentColumns = await getTableColumns(tableName);
-    const definedFields = TABLES[tableName];
+    const fields = TABLES[tableName];
 
-    // 将当前列转换为更易比较的格式
-    const currentColumnMap = currentColumns.reduce((map, col) => {
-        map[col.COLUMN_NAME] = {
-            type: col.COLUMN_TYPE.toUpperCase(),
-            nullable: col.IS_NULLABLE === 'YES',
-            default: col.COLUMN_DEFAULT,
-            extra: col.EXTRA,
-            comment: col.COLUMN_COMMENT,
-        };
-        return map;
-    }, {});
+    // 将当前列转换为Set以便快速查找
+    const currentColumnSet = new Set(
+        currentColumns.map(col => col.COLUMN_NAME.toLowerCase())
+    );
 
-    // 检查是否有新增或修改的字段
-    for (const [fieldName, definition] of Object.entries(definedFields)) {
-        if (fieldName === 'FOREIGN KEY') continue; // 跳过外键定义
-
-        // 解析定义的字段类型和属性
-        const [type, ...props] = definition.split(' ');
-        const isNullable = !props.includes('NOT NULL');
-        const hasDefault = props.includes('DEFAULT');
-        const commentMatch = definition.match(/COMMENT "([^"]*)"/);
-        const definedComment = commentMatch ? commentMatch[1] : null;
-
-        const currentColumn = currentColumnMap[fieldName];
-
-        // 如果字段不存在，或者属性不匹配，则需要更新
+    // 检查是否有新字段需要添加
+    for (const fieldName of Object.keys(fields)) {
         if (
-            !currentColumn ||
-            currentColumn.type !== type ||
-            currentColumn.nullable !== isNullable ||
-            (definedComment && currentColumn.comment !== definedComment)
+            fieldName === 'FOREIGN KEY' ||
+            fieldName === 'FOREIGN KEY ' ||
+            fieldName === 'FOREIGN KEY  ' ||
+            fieldName === 'UNIQUE KEY'
         ) {
+            continue;
+        }
+        if (!currentColumnSet.has(fieldName.toLowerCase())) {
             return true;
         }
     }
 
-    // 检查是否有需要删除的字段
-    const definedFieldNames = Object.keys(definedFields).filter(
-        name => name !== 'FOREIGN KEY'
-    );
-    const extraColumns = Object.keys(currentColumnMap).filter(
-        colName => !definedFieldNames.includes(colName)
-    );
-
-    return extraColumns.length > 0;
+    return false;
 }
 
 /**
@@ -103,10 +78,49 @@ async function checkTableNeedsUpdate(tableName) {
  * @param {string} tableName 表名
  */
 async function updateTable(tableName) {
-    const fields = TABLES[tableName];
-    // 生成ALTER TABLE语句
-    // TODO: 实现具体的更新逻辑
-    // console.log(`表 ${tableName} 结构已更新`)
+    try {
+        const fields = TABLES[tableName];
+        const currentColumns = await getTableColumns(tableName);
+
+        // 将当前列转换为Map以便快速查找
+        const currentColumnMap = new Map(
+            currentColumns.map(col => [col.COLUMN_NAME.toLowerCase(), col])
+        );
+
+        // 处理新增和修改的字段
+        for (const [fieldName, definition] of Object.entries(fields)) {
+            // 跳过特殊键
+            if (
+                fieldName === 'FOREIGN KEY' ||
+                fieldName === 'FOREIGN KEY ' ||
+                fieldName === 'FOREIGN KEY  ' ||
+                fieldName === 'UNIQUE KEY'
+            ) {
+                continue;
+            }
+
+            // 转换为小写进行比较
+            const lowerFieldName = fieldName.toLowerCase();
+
+            if (!currentColumnMap.has(lowerFieldName)) {
+                // 新增字段
+                const addColumnSql = `ALTER TABLE ${tableName} ADD COLUMN ${fieldName} ${definition}`;
+                try {
+                    await connection.execute(addColumnSql);
+                    console.log(`表 ${tableName} 新增字段 ${fieldName} 成功`);
+                } catch (error) {
+                    if (error.code === 'ER_DUP_FIELDNAME') {
+                        console.log(`字段 ${fieldName} 已存在，跳过`);
+                        continue;
+                    }
+                    throw error;
+                }
+            }
+        }
+    } catch (error) {
+        console.error(`更新表 ${tableName} 结构失败:`, error);
+        throw error;
+    }
 }
 
 /**
@@ -115,11 +129,20 @@ async function updateTable(tableName) {
  * @param {object} fields 字段定义
  */
 function generateCreateTableSQL(tableName, fields) {
+    // 如果已经是完整的 CREATE TABLE 语句，直接返回
+    if (typeof fields === 'string') {
+        return fields;
+    }
+
     const fieldDefinitions = [];
-    console.log(fields, 'fields');
+
     for (const [field, definition] of Object.entries(fields)) {
-        if (field === 'FOREIGN KEY') {
-            fieldDefinitions.push(`FOREIGN KEY ${definition}`);
+        if (
+            field === 'FOREIGN KEY' ||
+            field === 'FOREIGN KEY ' ||
+            field === 'UNIQUE KEY'
+        ) {
+            fieldDefinitions.push(`${field} ${definition}`);
         } else {
             fieldDefinitions.push(`${field} ${definition}`);
         }
@@ -128,7 +151,7 @@ function generateCreateTableSQL(tableName, fields) {
     return `
     CREATE TABLE IF NOT EXISTS ${tableName} (
       ${fieldDefinitions.join(',\n      ')}
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
   `;
 }
 
@@ -137,25 +160,55 @@ function generateCreateTableSQL(tableName, fields) {
  */
 async function initDatabase() {
     try {
-        // 修改表名从 articleTags 到 article_tags
+        // 按照依赖关系排序的表创建顺序
         const tableOrder = [
-            'users',
-            'categories',
-            'tags',
-            'articles',
-            'article_tags',
+            // 第一层：基础表（无外键依赖）
+            'users', // 用户表（最基础的表）
+            'categories', // 分类表（独立表）
+            'tags', // 标签表（独立表）
+            'tool_categories', // 工具分类表（独立表）
+
+            // 第二层：依赖单个基础表
+            'user_profiles', // 依赖 users
+            'collections', // 依赖 users
+            'articles', // 依赖 users, categories
+            'tools', // 工具表（独立表）
+
+            // 第三层：依赖第二层表
+            'comments', // 依赖 users, articles
+            'article_tags', // 依赖 articles, tags
+            'article_likes', // 依赖 articles, users
+            'comment_likes', // 依赖 comments, users
+            'collection_articles', // 依赖 collections, articles
+            'article_views', // 依赖 articles, users
+            'user_follows', // 依赖 users (self-reference)
+            'tag_follows', // 依赖 users, tags
+            'notifications', // 依赖 users
         ];
 
         for (const tableName of tableOrder) {
             const exists = await checkTableExists(tableName);
 
             if (!exists) {
-                // 表不存在，创建新表
+                // 创建新表
                 const fields = TABLES[tableName];
-                console.log(TABLES, 'fields');
                 const sql = generateCreateTableSQL(tableName, fields);
-                await connection.execute(sql);
-                console.log(`表 ${tableName} 创建成功`);
+                console.log(sql, 'sql');
+                try {
+                    await connection.execute(sql);
+                    console.log(`表 ${tableName} 创建成功`);
+                } catch (error) {
+                    console.error(`创建表 ${tableName} 失败:`, error);
+                    console.error('SQL:', sql);
+                    throw error;
+                }
+            } else {
+                // 检查并更新已存在的表
+                const needsUpdate = await checkTableNeedsUpdate(tableName);
+                if (needsUpdate) {
+                    await updateTable(tableName);
+                    console.log(`表 ${tableName} 结构已更新`);
+                }
             }
         }
         console.log('数据库初始化/更新完成');
@@ -165,8 +218,8 @@ async function initDatabase() {
     }
 }
 
-// 如果需要初始化数据库，取消下面的注释
-initDatabase();
+// 执行初始化
+initDatabase().catch(console.error);
 
 module.exports = {
     initDatabase,

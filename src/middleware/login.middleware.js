@@ -5,16 +5,31 @@ const errType = require('../app/err.message');
 const service = require('../service/user.service');
 
 const md5password = require('../utils/passwordhandle');
-const GITEE_AUTH_URL = 'https://gitee.com/oauth/authorize';
-const CLIENT_ID =
-    '345c224984e879d914da13cd4dd4b92cdbf217722342f2bfc46db724ca7ad681';
-const CLIENT_SECRET =
-    '9ae0cc711853df7e0b6441e2926c0bd3513dd6df57be5e79174a9ffb9da8868b';
-const REDIRECTURL = 'http://localhost:1234/login/gitee/callback';
+
+const { GITEE_LOGIN_REDIRECTURL } = process.env;
 const { PRIVATE_KEY, PUBLIC_KEY } = require('../app/config');
 const { default: axios } = require('axios');
-const { SERVER_HOST, SERVER_PORT } = process.env;
-
+const { handeleSuccessReturnMessage } = require('../utils');
+const {
+    SERVER_HOST,
+    SERVER_PORT,
+    GITEE_AUTH_URL,
+    CLIENT_ID,
+    CLIENT_SECRET,
+    GITEE_OWNER,
+    GITEE_REPO,
+    SHA,
+    GITEE_ACCESS_TOKEN,
+} = process.env;
+console.log(
+    GITEE_AUTH_URL,
+    CLIENT_ID,
+    CLIENT_SECRET,
+    GITEE_OWNER,
+    GITEE_REPO,
+    SHA,
+    GITEE_ACCESS_TOKEN
+);
 const verifyLogin = async (ctx, next) => {
     // 1.拿到用户名和密码
     const { username, password } = ctx.request.body;
@@ -32,24 +47,28 @@ const verifyLogin = async (ctx, next) => {
     }
     // 4.判断账号密码和数据库中的是否相同
     if (userinfo.password != md5password(password)) {
-        const err = new Error('123333');
+        const err = new Error('password_is_incorrent');
         return ctx.app.emit('err', err, ctx);
     }
-    if (userinfo.avatar_url) {
-        userinfo.avatar_url = `http://${SERVER_HOST}:${SERVER_PORT}${userinfo.avatar_url}`;
-    }
+    // if (userinfo.avatar_url) {
+    //     userinfo.avatar_url = `http://${SERVER_HOST}:${SERVER_PORT}${userinfo.avatar_url}`;
+    // }
     ctx.userinfo = userinfo;
     await next();
 };
 
-const testLogin = async (ctx, next) => {
-    let authUrl = `${GITEE_AUTH_URL}?client_id=${CLIENT_ID}&redirect_uri=${CLIENT_SECRET}&response_type=code`;
+const redirectLogin = async (ctx, next) => {
+    console.log(GITEE_LOGIN_REDIRECTURL, 'GITEE_LOGIN_REDIRECTURL');
+
+    let authUrl = `${GITEE_AUTH_URL}?client_id=${CLIENT_ID}&redirect_uri=${GITEE_LOGIN_REDIRECTURL}&response_type=code`;
+    console.log(authUrl, 'authUrl');
     ctx.redirect(authUrl);
 };
 
 const verifyAuth = async (ctx, next) => {
     const authorization = ctx.headers.authorization || '';
     const token = authorization.replace('Bearer ', '');
+    console.log(token, 'token');
     try {
         const result = jwt.verify(token, PUBLIC_KEY, {
             algorithms: ['RS256'],
@@ -68,11 +87,7 @@ const verifyAuth = async (ctx, next) => {
 const getAccessToken = async (ctx, next) => {
     console.log('这里执行');
     // 1.拿到code
-    console.log(ctx.request.url, 'ctx');
-    let url = ctx.request.url;
-    url = url.split('=');
-    console.log(url);
-    let code = url[1];
+    let { code } = ctx.query;
     console.log(code, 'code');
     // 2.获取accesstoken
     try {
@@ -82,13 +97,11 @@ const getAccessToken = async (ctx, next) => {
                 client_id: CLIENT_ID,
                 client_secret: CLIENT_SECRET,
                 code,
-                redirect_uri: REDIRECTURL,
+                redirect_uri: GITEE_LOGIN_REDIRECTURL,
                 grant_type: 'authorization_code',
             }
         );
-        console.log(tokenResponse, 'tokenResponse');
         const { access_token } = tokenResponse.data;
-        console.log(access_token, 'access_token');
         let userInfo = await getUserInfo(access_token);
         let { login, name, avatar_url } = userInfo;
         userInfo = {
@@ -159,9 +172,44 @@ async function getUserInfo(access_token) {
     return response.data;
 }
 
+// 可选的身份验证中间件
+const verifyAuthOptional = async (ctx, next) => {
+    const authorization = ctx.headers.authorization;
+    if (!authorization) {
+        // 如果没有token，继续执行但不设置userinfo
+        await next();
+        return;
+    }
+    console.log('authorization>>', authorization);
+    try {
+        const token = authorization.replace('Bearer ', '');
+        const result = jwt.verify(token, PUBLIC_KEY, {
+            algorithms: ['RS256'],
+        });
+        ctx.userinfo = result;
+    } catch (err) {
+        // 如果token无效，不设置userinfo
+        console.error('Token verification failed:', err);
+    }
+    // 无论token是否有效，都继续执行
+    await next();
+};
+
+const getCommitMessage = async (ctx, next) => {
+    const result = await axios.get(
+        `https://gitee.com/api/v5/repos/${GITEE_OWNER}/${GITEE_REPO}/commits?access_token=${GITEE_ACCESS_TOKEN}&sha=${SHA}`
+    );
+    handeleSuccessReturnMessage(ctx, '获取成功', {
+        commits: result.data,
+        total: result.data.length,
+    });
+};
+
 module.exports = {
     verifyLogin,
     verifyAuth,
+    verifyAuthOptional,
     getAccessToken,
-    testLogin,
+    redirectLogin,
+    getCommitMessage,
 };

@@ -1,18 +1,24 @@
 const connection = require('../app/database');
+const { generateUserId, generateEntityId } = require('../utils/idGenerator');
 
 class ManagerService {
     async create(user) {
         const { username, password, auth } = user;
+        const id = generateUserId(); // 用户ID用12位
 
-        const statement = `INSERT INTO users (username,password,auth) VALUES (?,?,?)`;
+        const statement = `
+            INSERT INTO users (id, username, password, auth) 
+            VALUES (?, ?, ?, ?)
+        `;
 
-        const result = await connection.execute(statement, [
+        const [result] = await connection.execute(statement, [
+            id,
             username,
             password,
             auth,
         ]);
 
-        return result;
+        return { ...result, id };
     }
     async SelectAuth(id) {
         const statement = `SELECT auth FROM users WHERE id=(?)`;
@@ -36,10 +42,18 @@ class ManagerService {
         return result;
     }
     async CreateBook(name, nums, price) {
-        const statement = `INSERT INTO books (name,nums,price) VALUES (?,?,?)`;
-        const result = await connection.execute(statement, [name, nums, price]);
-        console.log(result);
-        return result;
+        const id = generateEntityId(); // 图书ID用6位
+        const statement = `
+            INSERT INTO books (id, name, nums, price) 
+            VALUES (?, ?, ?, ?)
+        `;
+        const [result] = await connection.execute(statement, [
+            id,
+            name,
+            nums,
+            price,
+        ]);
+        return { ...result, id };
     }
 }
 
