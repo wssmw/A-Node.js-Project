@@ -5,6 +5,8 @@ const { initDatabase } = require('./schema/init');
 const app = require('./app');
 const connection = require('./app/database');
 
+console.log('testJenkins')
+
 // 初始化数据库
 initDatabase()
     .then(() => {
