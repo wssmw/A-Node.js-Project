@@ -9,7 +9,7 @@ noteRouter.post('/create', verifyAuth, noteController.create);
 // 获取小记详情
 noteRouter.post('/getById', verifyAuth, noteController.getById);
 // 获取小记列表
-noteRouter.get('/list', verifyAuth, noteController.list);
+noteRouter.post('/list', verifyAuth, noteController.list);
 // 更新小记
 noteRouter.post('/update', verifyAuth, noteController.update);
 // 删除小记

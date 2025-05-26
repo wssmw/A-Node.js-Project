@@ -50,13 +50,16 @@ class NoteController {
     async list(ctx) {
         try {
             const { id: userId } = ctx.userinfo;
-            const { offset = 0, limit = 10 } = ctx.request.body;
-            const notes = await noteService.getNotesByUser(
+            const { page = 1, pageSize = 10 } = ctx.request.body;
+            const { notes, total } = await noteService.getNotesByUser(
                 userId,
-                offset,
-                limit
+                page,
+                pageSize
             );
-            handeleSuccessReturnMessage(ctx, '获取成功', notes);
+            handeleSuccessReturnMessage(ctx, '获取成功', {
+                notes,
+                total,
+            });
         } catch (error) {
             handeleErrorReturnMessage(ctx, error.message);
         }

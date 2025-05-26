@@ -23,11 +23,16 @@ class NoteService {
         return rows[0] || null;
     }
 
-    async getNotesByUser(userId, offset = 0, limit = 10) {
-        console.log(userId, offset, limit, 'userId, offset, limit');
-        const statement = `SELECT * FROM notes WHERE user_id = ? ORDER BY created_at DESC LIMIT ${parseInt(limit)} OFFSET ${parseInt(offset)}`;
+    async getNotesByUser(userId, page = 1, pageSize = 10) {
+        const offset = (parseInt(page) - 1) * parseInt(pageSize);
+        const statement = `SELECT * FROM notes WHERE user_id = ? ORDER BY created_at DESC LIMIT ${parseInt(pageSize)} OFFSET ${parseInt(offset)}`;
         const [rows] = await connection.execute(statement, [userId]);
-        return rows;
+        const totalStatement = `SELECT COUNT(*) as total FROM notes WHERE user_id = ?`;
+        const [totalResult] = await connection.execute(totalStatement, [
+            userId,
+        ]);
+        const total = totalResult[0].total;
+        return { notes: rows, total };
     }
 
     async updateNote(id, userId, updateData) {
