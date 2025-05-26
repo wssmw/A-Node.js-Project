@@ -18,6 +18,7 @@ const tagFollows = require('./tag_follows');
 const notifications = require('./notifications');
 const toolCategories = require('./tool_categories');
 const tools = require('./tools');
+const notes = require('./notes');
 
 /**
  * 表关系说明：
@@ -44,4 +45,5 @@ module.exports = {
     notifications,
     tool_categories: toolCategories,
     tools,
+    notes,
 };

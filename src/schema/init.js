@@ -173,6 +173,7 @@ async function initDatabase() {
             'collections', // 依赖 users
             'articles', // 依赖 users, categories
             'tools', // 工具表（独立表）
+            'notes', // 依赖 users
 
             // 第三层：依赖第二层表
             'comments', // 依赖 users, articles
