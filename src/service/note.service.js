@@ -23,14 +23,19 @@ class NoteService {
         return rows[0] || null;
     }
 
-    async getNotesByUser(userId, page = 1, pageSize = 10) {
+    async getNotesByUser(userId, title = '', page = 1, pageSize = 10) {
         const offset = (parseInt(page) - 1) * parseInt(pageSize);
-        const statement = `SELECT * FROM notes WHERE user_id = ? ORDER BY created_at DESC LIMIT ${parseInt(pageSize)} OFFSET ${parseInt(offset)}`;
-        const [rows] = await connection.execute(statement, [userId]);
-        const totalStatement = `SELECT COUNT(*) as total FROM notes WHERE user_id = ?`;
-        const [totalResult] = await connection.execute(totalStatement, [
-            userId,
-        ]);
+        let statement = `SELECT * FROM notes WHERE user_id = ?`;
+        let totalStatement = `SELECT COUNT(*) as total FROM notes WHERE user_id = ?`;
+        const params = [userId];
+        if (title) {
+            statement += ` AND title LIKE ?`;
+            totalStatement += ` AND title LIKE ?`;
+            params.push(`%${title}%`);
+        }
+        statement += ` ORDER BY created_at DESC LIMIT ${pageSize} OFFSET ${offset}`;
+        const [rows] = await connection.execute(statement, params);
+        const [totalResult] = await connection.execute(totalStatement, params);
         const total = totalResult[0].total;
         return { notes: rows, total };
     }

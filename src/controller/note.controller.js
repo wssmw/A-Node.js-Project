@@ -50,9 +50,10 @@ class NoteController {
     async list(ctx) {
         try {
             const { id: userId } = ctx.userinfo;
-            const { page = 1, pageSize = 10 } = ctx.request.body;
+            const { page = 1, pageSize = 10, title } = ctx.request.body;
             const { notes, total } = await noteService.getNotesByUser(
                 userId,
+                title,
                 page,
                 pageSize
             );
