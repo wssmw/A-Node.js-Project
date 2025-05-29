@@ -13,6 +13,7 @@ class ArticleService {
             category,
             userId,
             cover_url = null,
+            is_draft = 0, // 添加 is_draft 字段，默认为非草稿
         } = articleData;
 
         const id = generateEntityId(); // 生成6位随机ID
@@ -25,10 +26,19 @@ class ArticleService {
             await connection.execute(
                 `
                 INSERT INTO articles 
-                (id, title, content, summary, cover_url, category_id, user_id) 
-                VALUES (?, ?, ?, ?, ?, ?, ?)
+                (id, title, content, summary, cover_url, category_id, user_id, is_draft) 
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                 `,
-                [id, title, content, summary, cover_url, category, userId]
+                [
+                    id,
+                    title,
+                    content,
+                    summary,
+                    cover_url,
+                    category,
+                    userId,
+                    is_draft,
+                ]
             );
 
             // 2. 创建文章-标签关联
@@ -112,7 +122,7 @@ class ArticleService {
     async findArticles(offset = 0, limit = 10, options = {}, userId = null) {
         try {
             const { category, keyword, userId: authorId } = options;
-            const whereConditions = [];
+            const whereConditions = ['a.is_draft = 0']; // 添加条件：只查询非草稿文章
             const params = [];
 
             if (category) {
@@ -133,10 +143,7 @@ class ArticleService {
                 params.push(likeKeyword, likeKeyword, likeKeyword);
             }
 
-            const whereClause =
-                whereConditions.length > 0
-                    ? `WHERE ${whereConditions.join(' AND ')}`
-                    : '';
+            const whereClause = `WHERE ${whereConditions.join(' AND ')}`;
 
             // 查询文章列表
             const statement = `
@@ -226,15 +233,14 @@ class ArticleService {
                     (SELECT COUNT(*) FROM article_likes WHERE article_id = a.id) as like_count
                 FROM articles a
                 LEFT JOIN categories c ON a.category_id = c.id
-                WHERE a.user_id = ?
+                WHERE a.user_id = ? AND a.is_draft = 0
                 ORDER BY a.created_at DESC
                 LIMIT ${safeLimit} OFFSET ${safeOffset}
             `;
-            console.log(safeUserId, 'safeUserId');
             const [articles] = await connection.execute(statement, [
                 safeUserId,
             ]);
-            console.log('articles', articles);
+
             // 获取每篇文章的标签
             for (let article of articles) {
                 const tagStatement = `
@@ -253,7 +259,7 @@ class ArticleService {
             const countStatement = `
                 SELECT COUNT(*) as total 
                 FROM articles 
-                WHERE user_id = ?
+                WHERE user_id = ? AND is_draft = 0
             `;
             const [countResult] = await connection.execute(countStatement, [
                 safeUserId,
@@ -340,6 +346,7 @@ class ArticleService {
                         (SELECT COUNT(*) FROM collection_articles WHERE article_id = a.id) * 3
                     ) as hot_score
                 FROM articles a
+                WHERE a.is_draft = 0
                 ORDER BY hot_score DESC
                 LIMIT ${safeLimit}
             `;
@@ -372,6 +379,7 @@ class ArticleService {
                 FROM articles a
                 LEFT JOIN users u ON a.user_id = u.id
                 LEFT JOIN categories c ON a.category_id = c.id
+                WHERE a.is_draft = 0
                 ORDER BY a.created_at DESC
                 LIMIT ${safeLimit}
             `;
@@ -479,6 +487,158 @@ class ArticleService {
         } catch (error) {
             await connection.rollback();
             console.error('删除文章失败:', error);
+            throw error;
+        } finally {
+            connection.release();
+        }
+    }
+
+    // 保存草稿
+    async saveDraft(articleData) {
+        let {
+            title,
+            content,
+            userId,
+            id = null, // 如果是更新草稿，需要传入id
+        } = articleData;
+        console.log(title, content, userId, id);
+        const connection = await require('../app/database').getConnection();
+        try {
+            await connection.beginTransaction();
+
+            if (id) {
+                // 更新草稿
+                await connection.execute(
+                    `
+                    UPDATE articles 
+                    SET title = ?, content = ?, is_draft = 1
+                    WHERE id = ? AND user_id = ?
+                    `,
+                    [title, content, id, userId]
+                );
+            } else {
+                console.log('这里执行');
+                // 创建新草稿
+                const newId = generateEntityId();
+                await connection.execute(
+                    `
+                    INSERT INTO articles 
+                    (id, title, content, user_id, is_draft) 
+                    VALUES (?, ?, ?, ?, 1)
+                    `,
+                    [newId, title, content, userId]
+                );
+                id = newId;
+            }
+
+            await connection.commit();
+            return { id };
+        } catch (error) {
+            await connection.rollback();
+            console.error('保存草稿错误:', error);
+            throw error;
+        } finally {
+            connection.release();
+        }
+    }
+
+    // 获取草稿列表
+    async getDrafts(userId, page = 1, pageSize = 10) {
+        const offset = (parseInt(page) - 1) * parseInt(pageSize);
+        const statement = `
+            SELECT 
+                id,
+                title,
+                content,
+                created_at,
+                updated_at
+            FROM articles
+            WHERE user_id = ? AND is_draft = 1
+            ORDER BY updated_at DESC
+            LIMIT ${pageSize} OFFSET ${offset}
+        `;
+        const [rows] = await connection.execute(statement, [userId]);
+
+        // 获取总数
+        const totalStatement = `
+            SELECT COUNT(*) as total 
+            FROM articles 
+            WHERE user_id = ? AND is_draft = 1
+        `;
+        const [totalResult] = await connection.execute(totalStatement, [
+            userId,
+        ]);
+        const total = totalResult[0].total;
+
+        return { drafts: rows, total };
+    }
+
+    // 删除草稿
+    async deleteDraft(id, userId) {
+        const connection = await require('../app/database').getConnection();
+        try {
+            await connection.beginTransaction();
+
+            // 删除文章
+            const [result] = await connection.execute(
+                'DELETE FROM articles WHERE id = ? AND user_id = ? AND is_draft = 1',
+                [id, userId]
+            );
+
+            await connection.commit();
+            return result.affectedRows > 0;
+        } catch (error) {
+            await connection.rollback();
+            throw error;
+        } finally {
+            connection.release();
+        }
+    }
+
+    // 发布草稿
+    async publishDraft(id, userId, articleData) {
+        const {
+            title,
+            content,
+            summary,
+            tags = [],
+            category,
+            cover_url = null,
+        } = articleData;
+
+        const connection = await require('../app/database').getConnection();
+        try {
+            await connection.beginTransaction();
+
+            // 1. 更新文章信息
+            await connection.execute(
+                `
+                UPDATE articles 
+                SET title = ?, content = ?, summary = ?, cover_url = ?, category_id = ?, is_draft = 0
+                WHERE id = ? AND user_id = ? AND is_draft = 1
+                `,
+                [title, content, summary, cover_url, category, id, userId]
+            );
+
+            // 2. 添加文章-标签关联
+            if (Array.isArray(tags) && tags.length > 0) {
+                for (const tagId of tags) {
+                    const articleTagId = generateEntityId();
+                    await connection.execute(
+                        `
+                        INSERT INTO article_tags (id, article_id, tag_id) 
+                        VALUES (?, ?, ?)
+                        `,
+                        [articleTagId, id, tagId]
+                    );
+                }
+            }
+
+            await connection.commit();
+            return true;
+        } catch (error) {
+            await connection.rollback();
+            console.error('发布草稿错误:', error);
             throw error;
         } finally {
             connection.release();

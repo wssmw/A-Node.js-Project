@@ -29,8 +29,15 @@ class ArticleController {
     async create(ctx) {
         console.log('create', ctx);
         try {
-            const { title, content, summary, tags, category, cover_url } =
-                ctx.request.body;
+            const {
+                title,
+                content,
+                summary,
+                tags,
+                category,
+                cover_url,
+                is_draft = 0,
+            } = ctx.request.body;
             const { id: userId } = ctx.userinfo;
 
             // 验证必填字段
@@ -61,6 +68,7 @@ class ArticleController {
                 tags,
                 category,
                 userId,
+                is_draft,
             });
             handeleSuccessReturnMessage(ctx, '文章创建成功', {
                 id: result.insertId,
@@ -255,6 +263,124 @@ class ArticleController {
 
             await articleService.deleteArticle(articleId, userId);
             handeleSuccessReturnMessage(ctx, '删除成功');
+        } catch (error) {
+            handeleErrorReturnMessage(ctx, error.message);
+        }
+    }
+
+    // 保存草稿
+    async saveDraft(ctx) {
+        try {
+            const { title, content, id } = ctx.request.body;
+            const { id: userId } = ctx.userinfo;
+            console.log('这里执行');
+            // 验证必填字段
+            if (!title || !content) {
+                ctx.status = 400;
+                ctx.body = {
+                    code: 400,
+                    message: '标题和内容不能为空',
+                };
+                return;
+            }
+
+            const result = await articleService.saveDraft({
+                title,
+                content,
+                userId,
+                id,
+            });
+
+            handeleSuccessReturnMessage(ctx, '草稿保存成功', {
+                id: result.id,
+            });
+        } catch (error) {
+            handeleErrorReturnMessage(ctx, error.message);
+        }
+    }
+
+    // 获取草稿列表
+    async getDrafts(ctx) {
+        try {
+            const { id: userId } = ctx.userinfo;
+            const { page = 1, pageSize = 10 } = ctx.query;
+            const { drafts, total } = await articleService.getDrafts(
+                userId,
+                page,
+                pageSize
+            );
+            handeleSuccessReturnMessage(ctx, '获取成功', { drafts, total });
+        } catch (error) {
+            handeleErrorReturnMessage(ctx, error.message);
+        }
+    }
+
+    // 删除草稿
+    async deleteDraft(ctx) {
+        try {
+            const { id } = ctx.request.body;
+            const { id: userId } = ctx.userinfo;
+            const success = await articleService.deleteDraft(id, userId);
+            if (!success) {
+                ctx.status = 404;
+                ctx.body = {
+                    code: 404,
+                    message: '草稿不存在或无权限',
+                };
+                return;
+            }
+            handeleSuccessReturnMessage(ctx, '删除成功');
+        } catch (error) {
+            handeleErrorReturnMessage(ctx, error.message);
+        }
+    }
+
+    // 发布草稿
+    async publishDraft(ctx) {
+        try {
+            const { id: userId } = ctx.userinfo;
+            const { id, title, content, summary, tags, category, cover_url } =
+                ctx.request.body;
+
+            // 验证必填字段
+            if (!title || !content || !summary || !category) {
+                ctx.status = 400;
+                ctx.body = {
+                    code: 400,
+                    message: '标题、内容、摘要和分类不能为空',
+                };
+                return;
+            }
+
+            // 验证标签
+            if (!Array.isArray(tags)) {
+                ctx.status = 400;
+                ctx.body = {
+                    code: 400,
+                    message: '标签必须是数组',
+                };
+                return;
+            }
+
+            const success = await articleService.publishDraft(id, userId, {
+                title,
+                content,
+                summary,
+                tags,
+                category,
+                cover_url,
+            });
+
+            if (!success) {
+                ctx.status = 404;
+                ctx.body = {
+                    code: 404,
+                    message: '草稿不存在或无权限',
+                };
+                return;
+            }
+
+            handeleSuccessReturnMessage(ctx, '发布成功');
         } catch (error) {
             handeleErrorReturnMessage(ctx, error.message);
         }

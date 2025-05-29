@@ -12,6 +12,10 @@ const {
     getHotArticles,
     getLatestArticles,
     deleteArticle,
+    saveDraft,
+    getDrafts,
+    deleteDraft,
+    publishDraft,
 } = require('../controller/article.controller');
 const { upload } = require('../middleware/file.middleware');
 
@@ -39,5 +43,11 @@ articleRouter.post('/getLatestArticles', getLatestArticles);
 
 // 删除文章（需要登录）
 articleRouter.post('/delete', verifyAuth, deleteArticle);
+
+// 草稿相关路由
+articleRouter.post('/draft/save', verifyAuth, saveDraft);
+articleRouter.get('/drafts', verifyAuth, getDrafts);
+articleRouter.post('/draft/publish', verifyAuth, publishDraft);
+articleRouter.post('/draft/delete', verifyAuth, deleteDraft);
 
 module.exports = articleRouter;

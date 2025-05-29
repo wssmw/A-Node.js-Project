@@ -5,10 +5,11 @@ const articles = {
     id: 'VARCHAR(6) PRIMARY KEY COMMENT "6位随机字符串ID"',
     title: 'VARCHAR(100) NOT NULL COMMENT "文章标题"',
     content: 'TEXT NOT NULL COMMENT "文章内容"',
-    summary: 'VARCHAR(255) NOT NULL COMMENT "文章摘要"',
+    summary: 'VARCHAR(255) DEFAULT NULL COMMENT "文章摘要"',
     cover_url: 'VARCHAR(255) DEFAULT NULL COMMENT "文章封面图片URL"',
     user_id: 'VARCHAR(12) NOT NULL COMMENT "作者ID"',
-    category_id: 'INT NOT NULL COMMENT "分类ID"',
+    category_id: 'INT DEFAULT NULL COMMENT "分类ID"',
+    is_draft: 'TINYINT(1) DEFAULT 0 COMMENT "是否为草稿 0-否 1-是"',
     created_at: 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP',
     updated_at:
         'TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP',
