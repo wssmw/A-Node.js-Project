@@ -385,6 +385,22 @@ class ArticleController {
             handeleErrorReturnMessage(ctx, error.message);
         }
     }
+
+    // 获取关注用户的文章
+    async getFollowingArticles(ctx, next) {
+        const { id: userId } = ctx.userinfo;
+        const { offset = 0, limit = 10 } = ctx.request.body;
+        console.log(offset, limit, userId);
+        const { articles, total } = await articleService.getFollowingArticles(
+            userId,
+            offset,
+            limit
+        );
+        handeleSuccessReturnMessage(ctx, '发布成功', {
+            articles,
+            total,
+        });
+    }
 }
 
 module.exports = new ArticleController();

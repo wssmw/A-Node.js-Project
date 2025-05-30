@@ -2,6 +2,7 @@ const connection = require('../app/database');
 const { generateEntityId } = require('../utils/idGenerator');
 const path = require('path');
 const { safeDeleteFile } = require('../utils/fileUtils');
+const { getArticleListByUserIds } = require('./follow.service');
 
 class ArticleService {
     async createArticle(articleData) {
@@ -642,6 +643,71 @@ class ArticleService {
             throw error;
         } finally {
             connection.release();
+        }
+    }
+
+    async getFollowingArticles(userId, offset = 0, limit = 10) {
+        try {
+            // 查询关注用户的文章
+            const statement = `
+                SELECT 
+                    a.*,
+                    u.username as author_name,
+                    u.nickname as author_nickname,
+                    c.name as category_name,
+                    (SELECT COUNT(*) FROM comments WHERE article_id = a.id) as comment_count,
+                    (SELECT COUNT(*) FROM article_likes WHERE article_id = a.id) as like_count,
+                    (SELECT COUNT(*) FROM collection_articles WHERE article_id = a.id) as collection_count,
+                    (SELECT COUNT(*) FROM article_views WHERE article_id = a.id) as view_count,
+                    (SELECT COUNT(DISTINCT ip) FROM article_views WHERE article_id = a.id) as unique_view_count,
+                    EXISTS(SELECT 1 FROM article_likes WHERE article_id = a.id AND user_id = ?) as has_liked,
+                    EXISTS(SELECT 1 FROM collection_articles ca JOIN collections c ON ca.collection_id = c.id WHERE ca.article_id = a.id AND c.user_id = ?) as has_collected
+                FROM articles a
+                INNER JOIN user_follows uf ON a.user_id = uf.following_id
+                LEFT JOIN users u ON a.user_id = u.id
+                LEFT JOIN categories c ON a.category_id = c.id
+                WHERE uf.follower_id = ? AND a.is_draft = 0
+                ORDER BY a.created_at DESC
+                LIMIT ${limit} OFFSET ${offset}
+            `;
+
+            const [articles] = await connection.execute(statement, [
+                userId,
+                userId,
+                userId,
+            ]);
+            console.log('这里执行', articles);
+            // 获取每篇文章的标签
+            for (let article of articles) {
+                const tagStatement = `
+                    SELECT t.id, t.name
+                    FROM tags t
+                    INNER JOIN article_tags at ON t.id = at.tag_id
+                    WHERE at.article_id = ?
+                `;
+                const [tags] = await connection.execute(tagStatement, [
+                    article.id,
+                ]);
+                article.tags = tags;
+            }
+            // 获取总数
+            const countStatement = `
+                SELECT COUNT(*) as total
+                FROM articles a
+                INNER JOIN user_follows uf ON a.user_id = uf.following_id
+                WHERE uf.follower_id = ? AND a.is_draft = 0
+            `;
+            const [countResult] = await connection.execute(countStatement, [
+                userId,
+            ]);
+
+            return {
+                articles,
+                total: countResult[0].total,
+            };
+        } catch (error) {
+            console.error('获取关注用户文章失败:', error);
+            throw error;
         }
     }
 }

@@ -16,6 +16,7 @@ const {
     getDrafts,
     deleteDraft,
     publishDraft,
+    getFollowingArticles,
 } = require('../controller/article.controller');
 const { upload } = require('../middleware/file.middleware');
 
@@ -40,6 +41,9 @@ articleRouter.post('/getHotArticles', getHotArticles);
 
 // 获取最新文章
 articleRouter.post('/getLatestArticles', getLatestArticles);
+
+// 获取关注用户的文章（需要登录）
+articleRouter.post('/getFollowingArticles', verifyAuth, getFollowingArticles);
 
 // 删除文章（需要登录）
 articleRouter.post('/delete', verifyAuth, deleteArticle);
