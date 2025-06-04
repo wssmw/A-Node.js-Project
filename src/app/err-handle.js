@@ -25,7 +25,13 @@ const errHandle = (err, ctx) => {
             returnDataChange(ctx, '400', '密码错误');
             break;
         case errType.UNAUTHORIZATION:
-            returnDataChange(ctx, '400', '无效的token');
+            returnDataChange(ctx, '401', '无效的token');
+            break;
+        case 'TOKEN_EXPIRED':
+            returnDataChange(ctx, '401', '访问令牌已过期，请刷新token');
+            break;
+        case 'REFRESH_TOKEN_EXPIRED':
+            returnDataChange(ctx, '401', '刷新令牌已过期，请重新登录');
             break;
         case errType.MANAGER_NOT_AUTH:
             returnDataChange(ctx, '400', '管理员的权限不够');

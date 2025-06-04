@@ -19,6 +19,7 @@ const notifications = require('./notifications');
 const toolCategories = require('./tool_categories');
 const tools = require('./tools');
 const notes = require('./notes');
+const refreshTokens = require('./refresh_tokens'); // 添加刷新令牌表
 
 /**
  * 表关系说明：
@@ -46,4 +47,5 @@ module.exports = {
     tool_categories: toolCategories,
     tools,
     notes,
+    refresh_tokens: refreshTokens, // 添加刷新令牌表
 };

@@ -190,6 +190,7 @@ class UserService {
     }
 
     async getUserById(userId) {
+        console.log(userId, 'userId');
         const sql = `
             SELECT 
                 u.*,
@@ -209,6 +210,7 @@ class UserService {
         if (rows.length > 0) {
             const user = rows[0];
             delete user.password; // 删除敏感信息
+            console.log(user, 'user');
             return user;
         }
         return null;

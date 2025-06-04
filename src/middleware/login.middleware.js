@@ -68,17 +68,16 @@ const redirectLogin = async (ctx, next) => {
 const verifyAuth = async (ctx, next) => {
     const authorization = ctx.headers.authorization || '';
     const token = authorization.replace('Bearer ', '');
-    console.log(token, 'token');
+
     try {
         const result = jwt.verify(token, PUBLIC_KEY, {
             algorithms: ['RS256'],
         });
-        console.log('result:', result);
+        console.log(result, 'result');
         ctx.userinfo = result;
         await next();
     } catch (error) {
-        console.log('这出错了');
-        const err = new Error(errType.UNAUTHORIZATION);
+        const err = new Error('TOKEN_EXPIRED');
         return ctx.app.emit('err', err, ctx);
     }
 };
