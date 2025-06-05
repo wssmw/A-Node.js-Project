@@ -414,7 +414,7 @@ async function initDatabase() {
                     );
                     cacheUpdated = true;
                 } else {
-                    console.log(`表 ${tableName} 无需更新`);
+                    // console.log(`表 ${tableName} 无需更新`);
                 }
             }
         }

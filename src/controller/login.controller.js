@@ -10,7 +10,7 @@ class LoginController {
 
         // 生成访问令牌（15分钟过期）
         const token = jwt.sign({ id, username }, PRIVATE_KEY, {
-            expiresIn: 60 * 1, // 15分钟
+            expiresIn: 60 * 15, // 15分钟
             algorithm: 'RS256',
         });
 
