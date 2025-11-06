@@ -367,6 +367,7 @@ async function initDatabase() {
             'tools', // 工具表（独立表）
             'notes', // 依赖 users
             'refresh_tokens', // 依赖 users
+            'ai_conversations', // 依赖 users
 
             // 第三层：依赖第二层表
             'comments', // 依赖 users, articles
@@ -378,6 +379,7 @@ async function initDatabase() {
             'user_follows', // 依赖 users (self-reference)
             'tag_follows', // 依赖 users, tags
             'notifications', // 依赖 users
+            'ai_messages', // 依赖 ai_conversations
         ];
 
         for (const tableName of tableOrder) {

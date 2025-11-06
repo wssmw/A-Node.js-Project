@@ -20,6 +20,8 @@ const toolCategories = require('./tool_categories');
 const tools = require('./tools');
 const notes = require('./notes');
 const refreshTokens = require('./refresh_tokens'); // 添加刷新令牌表
+const aiConversations = require('./ai_conversations'); // AI对话表
+const aiMessages = require('./ai_messages'); // AI消息表
 
 /**
  * 表关系说明：
@@ -48,4 +50,6 @@ module.exports = {
     tools,
     notes,
     refresh_tokens: refreshTokens, // 添加刷新令牌表
+    ai_conversations: aiConversations, // AI对话表
+    ai_messages: aiMessages, // AI消息表
 };
