@@ -22,12 +22,17 @@ const notes = require('./notes');
 const refreshTokens = require('./refresh_tokens'); // 添加刷新令牌表
 const aiConversations = require('./ai_conversations'); // AI对话表
 const aiMessages = require('./ai_messages'); // AI消息表
+const performanceReports = require('./performance_reports'); // 性能监控报告表
+const performanceResources = require('./performance_resources'); // 性能监控资源表
+const performanceErrors = require('./performance_errors'); // 性能监控错误表
+const performanceNetworkRequests = require('./performance_network_requests'); // 性能监控网络请求表
 
 /**
  * 表关系说明：
  * 1. users 与 articles: 一对多关系，一个用户可以发布多篇文章
  * 2. articles 与 categories: 多对一关系，多篇文章属于同一分类
  * 3. articles 与 tags: 多对多关系，通过 article_tags 表关联
+ * 4. performance_reports 与 performance_resources/performance_errors/performance_network_requests: 一对多关系
  */
 
 module.exports = {
@@ -52,4 +57,8 @@ module.exports = {
     refresh_tokens: refreshTokens, // 添加刷新令牌表
     ai_conversations: aiConversations, // AI对话表
     ai_messages: aiMessages, // AI消息表
+    performance_reports: performanceReports, // 性能监控报告表
+    performance_resources: performanceResources, // 性能监控资源表
+    performance_errors: performanceErrors, // 性能监控错误表
+    performance_network_requests: performanceNetworkRequests, // 性能监控网络请求表
 };

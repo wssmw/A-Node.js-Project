@@ -46,7 +46,9 @@ function getTableHash(tableName, fields) {
         fields: Object.entries(fields)
             .filter(
                 ([key]) =>
-                    !key.startsWith('FOREIGN KEY') && key !== 'UNIQUE KEY'
+                    !key.startsWith('FOREIGN KEY') &&
+                    key !== 'UNIQUE KEY' &&
+                    key !== 'INDEX'
             )
             .sort(([a], [b]) => a.localeCompare(b)),
     });
@@ -167,7 +169,11 @@ async function checkTableNeedsUpdate(tableName, cache) {
     // 检查是否有新字段需要添加或现有字段需要更新
     for (const [fieldName, definition] of Object.entries(fields)) {
         // 跳过特殊键
-        if (fieldName.startsWith('FOREIGN KEY') || fieldName === 'UNIQUE KEY') {
+        if (
+            fieldName.startsWith('FOREIGN KEY') ||
+            fieldName === 'UNIQUE KEY' ||
+            fieldName === 'INDEX'
+        ) {
             continue;
         }
 
@@ -220,6 +226,9 @@ function generateCreateTableSQL(tableName, fields) {
     for (const [field, definition] of Object.entries(fields)) {
         if (field.startsWith('FOREIGN KEY') || field === 'UNIQUE KEY') {
             fieldDefinitions.push(`${field} ${definition}`);
+        } else if (field === 'INDEX') {
+            // 处理索引定义
+            fieldDefinitions.push(`INDEX ${definition}`);
         } else {
             fieldDefinitions.push(`${field} ${definition}`);
         }
@@ -256,7 +265,8 @@ async function updateTable(tableName) {
             // 跳过特殊键
             if (
                 fieldName.startsWith('FOREIGN KEY') ||
-                fieldName === 'UNIQUE KEY'
+                fieldName === 'UNIQUE KEY' ||
+                fieldName === 'INDEX'
             ) {
                 continue;
             }
@@ -380,6 +390,12 @@ async function initDatabase() {
             'tag_follows', // 依赖 users, tags
             'notifications', // 依赖 users
             'ai_messages', // 依赖 ai_conversations
+            'performance_reports', // 性能监控报告表（独立表）
+
+            // 第四层：依赖第三层表
+            'performance_resources', // 依赖 performance_reports
+            'performance_errors', // 依赖 performance_reports
+            'performance_network_requests', // 依赖 performance_reports
         ];
 
         for (const tableName of tableOrder) {
